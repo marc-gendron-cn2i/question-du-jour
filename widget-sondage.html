@@ -53,14 +53,43 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  async function mergeAnonymousVoteIfConnected(date) {
+    const arcId = getArcIdUUID();
+    if (!arcId) return;
+
+    const anonRef = doc(db, "votes", `${userId}_${date}`);
+    const arcRef = doc(db, "votes_by_arcid", `${arcId}_${date}`);
+
+    const [anonSnap, arcSnap] = await Promise.all([getDoc(anonRef), getDoc(arcRef)]);
+    if (anonSnap.exists() && !arcSnap.exists()) {
+      const data = anonSnap.data();
+      await runTransaction(db, async (t) => {
+        t.set(arcRef, {
+          arcId,
+          date,
+          option: data.option,
+          userId,
+          merged: true
+        });
+        t.update(anonRef, {
+          ArcID: arcId,
+          merged: true
+        });
+      });
+      console.log(`✅ Fusion du vote anonyme avec l'ArcID ${arcId}`);
+    }
+  }
+
   async function hasVoted(date) {
     const arcId = getArcIdUUID();
     const voteSnap = await getDoc(doc(db, "votes", `${userId}_${date}`));
     if (voteSnap.exists()) return true;
+
     if (arcId) {
       const arcSnap = await getDoc(doc(db, "votes_by_arcid", `${arcId}_${date}`));
       if (arcSnap.exists()) return true;
     }
+
     return false;
   }
 
@@ -83,6 +112,8 @@ document.addEventListener("DOMContentLoaded", () => {
         <input type="radio" name="poll-choice" value="${idx}" style='margin-right: 8px;'>${opt}
       </label>`).join("");
     bEl.style.display = "block";
+
+    await mergeAnonymousVoteIfConnected(pollId);
 
     if (await hasVoted(pollId)) {
       listenToResults();
