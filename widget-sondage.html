@@ -157,7 +157,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const rEl = document.getElementById("poll-results");
     rEl.style.display = "block";
     rEl.innerHTML = "<em>Chargement des résultats…</em>";
-    const rEl = document.getElementById("poll-results");
     onSnapshot(doc(db, "polls", pollId), docSnap => {
       const data = docSnap.data();
       const total = data.votes.reduce((a, b) => a + b, 0);
