@@ -1,4 +1,4 @@
-<div class="poll-container" style="border: 2px solid #d51D2C; border-radius: 0px; max-width: 600px; margin: 2rem auto; padding: 1.5rem; font-family: 'Red Hat Display', sans-serif;">
+<div class="poll-container" style="border: 2px solid #d51D2C; border-radius: 12px; max-width: 600px; margin: 2rem auto; padding: 1.5rem; font-family: 'Red Hat Display', sans-serif;">
   <div style="font-weight: bold; color: #d51D2C; display: flex; align-items: center; font-size: 18px; margin-bottom: 1rem;">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="margin-right: 0.5rem; width: 20px; height: 20px; fill: #d51D2C;"><path d="M4 21h2V10H4v11zm7 0h2V3h-2v18zm7 0h2v-6h-2v6z"/></svg>
     Question sondage
@@ -116,8 +116,11 @@ document.addEventListener("DOMContentLoaded", () => {
     bEl.style.display = "block";
 
     if (await hasVoted(pollId)) {
-      if (await waitForGAMStatus()) listenToResults();
-      else aEl.innerHTML = `Connectez-vous pour voir les résultats du sondage. <a href="/connexion">Se connecter</a>`;
+      if (await waitForGAMStatus()) {
+        listenToResults();
+        setTimeout(listenToResults, 1000); // 🔁 Retry in case pubads loads after slotRenderEnded
+      }
+      else aEl.innerHTML = `<span style='color: #000;'>Connectez-vous pour voir les résultats du sondage. <a href="/connexion" style="color: #d51D2C; text-decoration: underline;">Se connecter</a></span>`;
       oEl.style.display = "none";
       bEl.style.display = "none";
     }
@@ -152,6 +155,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function listenToResults() {
     const rEl = document.getElementById("poll-results");
+    rEl.style.display = "block";
+    rEl.innerHTML = "<em>Chargement des résultats…</em>";
+    const rEl = document.getElementById("poll-results");
     onSnapshot(doc(db, "polls", pollId), docSnap => {
       const data = docSnap.data();
       const total = data.votes.reduce((a, b) => a + b, 0);
@@ -174,4 +180,3 @@ document.addEventListener("DOMContentLoaded", () => {
   renderPoll();
 });
 </script>
- 
