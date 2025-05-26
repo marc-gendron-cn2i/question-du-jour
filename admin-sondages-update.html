@@ -51,11 +51,19 @@
       display: block;
       margin-top: 0.3rem;
     }
+    .flex-row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .flex-col {
+      flex: 1 1 45%;
+    }
   </style>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDMJGl7E0O_Q2Tj7GPRM0XQTyJ4N6Wph2A",
@@ -70,6 +78,19 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    function formatDateFR(date) {
+      return date.toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+      }) + ' à ' + date.toLocaleTimeString('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    }
+
     function updateDateTimePreviews() {
       const d1 = document.getElementById('dateDebut').value;
       const h1 = document.getElementById('heureDebut').value;
@@ -81,14 +102,14 @@
 
       if (d1 && h1) {
         const dt1 = new Date(`${d1}T${h1}:00`);
-        prev1.textContent = `Début prévu : ${dt1.toLocaleString('fr-CA')}`;
+        prev1.textContent = `Début prévu : ${formatDateFR(dt1)}`;
       } else {
         prev1.textContent = '';
       }
 
       if (d2 && h2) {
         const dt2 = new Date(`${d2}T${h2}:00`);
-        prev2.textContent = `Fin prévue : ${dt2.toLocaleString('fr-CA')}`;
+        prev2.textContent = `Fin prévue : ${formatDateFR(dt2)}`;
       } else {
         prev2.textContent = '';
       }
@@ -165,7 +186,7 @@
           return;
         }
 
-        const pollRef = doc(db, "polls", dateDebut); // ou startDateTime.toISOString().slice(0, 10)
+        const pollRef = doc(db, "polls", dateDebut); // peut être ajusté à une clé unique
         await setDoc(pollRef, {
           question,
           options,
@@ -188,7 +209,7 @@
         }
 
         updateOptionInputs();
-        message.textContent = `Sondage créé pour le ${dateDebut}`;
+        message.textContent = `Sondage créé pour le ${formatDateFR(startDateTime)}`;
       };
     });
   </script>
@@ -196,18 +217,29 @@
 <body>
   <h1>Créer une question du jour</h1>
   <form id="pollForm">
-    <label for="dateDebut">Date de début</label>
-    <input type="date" id="dateDebut" required>
 
-    <label for="heureDebut">Heure de début</label>
-    <input type="time" id="heureDebut" required value="00:00">
+    <div class="flex-row">
+      <div class="flex-col">
+        <label for="dateDebut">Date de début</label>
+        <input type="date" id="dateDebut" required>
+      </div>
+      <div class="flex-col">
+        <label for="heureDebut">Heure de début</label>
+        <input type="time" id="heureDebut" required value="00:00">
+      </div>
+    </div>
     <small id="startDateTimePreview"></small>
 
-    <label for="dateFin">Date de fin</label>
-    <input type="date" id="dateFin" required>
-
-    <label for="heureFin">Heure de fin</label>
-    <input type="time" id="heureFin" required value="23:59">
+    <div class="flex-row">
+      <div class="flex-col">
+        <label for="dateFin">Date de fin</label>
+        <input type="date" id="dateFin" required>
+      </div>
+      <div class="flex-col">
+        <label for="heureFin">Heure de fin</label>
+        <input type="time" id="heureFin" required value="23:59">
+      </div>
+    </div>
     <small id="endDateTimePreview"></small>
 
     <label for="question">Question</label>
