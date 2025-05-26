@@ -1,4 +1,4 @@
-<div class="poll-container" style="border: 2px solid #d51D2C; border-radius: 12px; max-width: 600px; margin: 2rem auto; padding: 1.5rem; font-family: 'Red Hat Display', sans-serif;">
+<div class="poll-container" style="border: 2px solid #d51D2C; border-radius: 0px; max-width: 600px; margin: 2rem auto; padding: 1.5rem; font-family: 'Red Hat Display', sans-serif;">
   <div style="font-weight: bold; color: #d51D2C; display: flex; align-items: center; font-size: 18px; margin-bottom: 1rem;">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="margin-right: 0.5rem; width: 20px; height: 20px; fill: #d51D2C;"><path d="M4 21h2V10H4v11zm7 0h2V3h-2v18zm7 0h2v-6h-2v6z"/></svg>
     Question sondage
@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
     apiKey: "AIzaSyDMJGl7E0O_Q2Tj7GPRM0XQTyJ4N6Wph2A",
     authDomain: "question-du-jour-d1a22.firebaseapp.com",
     projectId: "question-du-jour-d1a22",
-    storageBucket: "question-du-jour-d1a22.firebasestorage.app",
+    storageBucket: "question-du-jour-d1a22.appspot.com",
     messagingSenderId: "113783715054",
     appId: "1:113783715054:web:0fdc415506e644e338afff"
   };
@@ -35,64 +35,32 @@ document.addEventListener("DOMContentLoaded", () => {
     return uid;
   })();
 
-  function debugGAMTargeting() {
-    console.group("🛠️ Debug Google Ad Manager Targeting");
+  function isArcUserLoggedIn() {
     try {
-      if (!window.googletag) {
-        console.warn("googletag not defined");
-        return;
-      }
-      if (!googletag.apiReady) console.warn("googletag.apiReady is false");
-      if (!googletag.pubadsReady) console.warn("googletag.pubadsReady is false");
-
-      const keys = googletag.pubads().getTargetingKeys();
-      if (keys.length === 0) {
-        console.warn("No targeting keys found.");
-      } else {
-        keys.forEach(key => {
-          const values = googletag.pubads().getTargeting(key);
-          console.log(`📌 ${key}:`, values);
-        });
-      }
-
-      const status = googletag.pubads().getTargeting("status");
-      console.log("✅ Status targeting value:", status);
-      console.log("🔍 Includes 'paying'? ", status.includes("paying"));
-      console.log("🔍 Includes 'registered'? ", status.includes("registered"));
-    } catch (e) {
-      console.error("Erreur dans debugGAMTargeting:", e);
+      const info = JSON.parse(localStorage.getItem("ArcId.USER_INFO"));
+      return info && typeof info === "object" && Object.keys(info).length > 0;
+    } catch {
+      return false;
     }
-    console.groupEnd();
+  }
+
+  function getArcIdUUID() {
+    try {
+      const info = JSON.parse(localStorage.getItem("ArcId.USER_INFO"));
+      return info?.uuid || null;
+    } catch {
+      return null;
+    }
   }
 
   async function hasVoted(date) {
+    const arcId = getArcIdUUID();
     const voteSnap = await getDoc(doc(db, "votes", `${userId}_${date}`));
-    return voteSnap.exists();
-  }
+    if (voteSnap.exists()) return true;
+    if (!arcId) return false;
 
-  async function waitForGAMStatus(maxWait = 3000) {
-    return new Promise(resolve => {
-      let resolved = false;
-      const timeout = setTimeout(() => {
-        if (!resolved) resolve(false);
-      }, maxWait);
-
-      try {
-        googletag.cmd = googletag.cmd || [];
-        googletag.cmd.push(() => {
-          googletag.pubads().addEventListener('slotRenderEnded', function () {
-            debugGAMTargeting();
-            const targeting = googletag.pubads().getTargeting("status") || [];
-            const isConnected = targeting.includes("registered") || targeting.includes("paying");
-            clearTimeout(timeout);
-            resolve(isConnected);
-          });
-        });
-      } catch (e) {
-        console.error("❌ Erreur dans waitForGAMStatus (slotRenderEnded fallback):", e);
-        resolve(false);
-      }
-    });
+    const querySnapshot = await getDoc(doc(db, "votes_by_arcid", `${arcId}_${date}`));
+    return querySnapshot.exists();
   }
 
   async function renderPoll() {
@@ -116,10 +84,10 @@ document.addEventListener("DOMContentLoaded", () => {
     bEl.style.display = "block";
 
     if (await hasVoted(pollId)) {
-      if (await waitForGAMStatus()) listenToResults();
-      else aEl.innerHTML = `Connectez-vous pour voir les résultats du sondage. <a href="/connexion">Se connecter</a>`;
+      listenToResults();
       oEl.style.display = "none";
       bEl.style.display = "none";
+      return;
     }
   }
 
@@ -129,11 +97,19 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("poll-alert").textContent = "Veuillez choisir une option.";
       return;
     }
+
+    if (await hasVoted(pollId)) {
+      document.getElementById("poll-alert").textContent = "Vous avez déjà enregistré une réponse.";
+      listenToResults();
+      document.getElementById("poll-options").style.display = "none";
+      document.getElementById("submit-poll").style.display = "none";
+      return;
+    }
+
     const index = parseInt(selected.value);
     const pollRef = doc(db, "polls", pollId);
     const voteRef = doc(db, "votes", `${userId}_${pollId}`);
     const docSnap = await getDoc(pollRef);
-    const optionsLength = docSnap.data().options.length;
 
     await runTransaction(db, async (t) => {
       const pollDoc = await t.get(pollRef);
@@ -141,17 +117,24 @@ document.addEventListener("DOMContentLoaded", () => {
       const votes = data.votes;
       votes[index]++;
       t.update(pollRef, { votes });
-      t.set(voteRef, { userId, date: pollId, option: index });
+      t.set(voteRef, {
+        userId,
+        date: pollId,
+        option: index,
+        ArcID: getArcIdUUID()
+      });
     });
 
-    if (await waitForGAMStatus()) listenToResults();
-    else document.getElementById("poll-alert").innerHTML = `Connectez-vous pour voir les résultats du sondage. <a href="/connexion">Se connecter</a>`;
+    if (isArcUserLoggedIn()) listenToResults();
+    else document.getElementById("poll-alert").innerHTML = `<span style='color: #000;'>Connectez-vous pour voir les résultats du sondage. <a href="/connexion" style="color: #d51D2C; text-decoration: underline;">Me connecter</a></span>`;
     document.getElementById("poll-options").style.display = "none";
     document.getElementById("submit-poll").style.display = "none";
   }
 
   function listenToResults() {
     const rEl = document.getElementById("poll-results");
+    rEl.style.display = "block";
+    rEl.innerHTML = "<em>Chargement des résultats…</em>";
     onSnapshot(doc(db, "polls", pollId), docSnap => {
       const data = docSnap.data();
       const total = data.votes.reduce((a, b) => a + b, 0);
@@ -166,7 +149,6 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
         </div>`;
       }).join("") + `<div style='margin-top: 8px; font-size: 14px;'>${total} répondant${total > 1 ? "s" : ""}</div>`;
-      rEl.style.display = "block";
     });
   }
 
@@ -174,4 +156,3 @@ document.addEventListener("DOMContentLoaded", () => {
   renderPoll();
 });
 </script>
- 
