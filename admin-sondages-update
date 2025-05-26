@@ -45,11 +45,16 @@
       font-weight: 600;
       color: green;
     }
+    #formattedDate {
+      margin-top: 0.3rem;
+      font-size: 0.9rem;
+      color: #333;
+    }
   </style>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDMJGl7E0O_Q2Tj7GPRM0XQTyJ4N6Wph2A",
@@ -64,11 +69,18 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    function toFRDate(isoDate) {
+      const [yyyy, mm, dd] = isoDate.split('-');
+      return `${dd}-${mm}-${yyyy}`;
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       const form = document.getElementById('pollForm');
       const message = document.getElementById('successMessage');
       const optionsContainer = document.getElementById('optionsContainer');
       const addOptionButton = document.getElementById('addOption');
+      const dateInput = document.getElementById('date');
+      const formattedDate = document.getElementById('formattedDate');
 
       const updateOptionInputs = () => {
         const currentInputs = optionsContainer.querySelectorAll('input.option-input');
@@ -84,16 +96,60 @@
           input.className = 'option-input';
           input.required = true;
           optionsContainer.appendChild(input);
+          updateOptionInputs();
         }
-        updateOptionInputs();
       });
 
-      updateOptionInputs(); // call once on load
+      // Initialisation : 2 champs option
+      for (let i = 0; i < 2; i++) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = `Option ${i + 1}`;
+        input.className = 'option-input';
+        input.required = true;
+        optionsContainer.appendChild(input);
+      }
+
+      updateOptionInputs();
+
+      dateInput.addEventListener('change', async () => {
+        const isoDate = dateInput.value;
+        if (!isoDate) return;
+
+        formattedDate.textContent = `Date sélectionnée : ${toFRDate(isoDate)}`;
+
+        const pollRef = doc(db, "polls", isoDate);
+        const snapshot = await getDoc(pollRef);
+
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          document.getElementById('question').value = data.question || '';
+          document.getElementById('startTime').value = data.startTime?.substring(11, 16) || '00:00';
+          document.getElementById('endTime').value = data.endTime?.substring(11, 16) || '23:59';
+
+          optionsContainer.innerHTML = '';
+          data.options.forEach((opt, idx) => {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'option-input';
+            input.placeholder = `Option ${idx + 1}`;
+            input.required = true;
+            input.value = opt;
+            optionsContainer.appendChild(input);
+          });
+          updateOptionInputs();
+        }
+      });
 
       form.onsubmit = async (e) => {
         e.preventDefault();
 
-        const date = document.getElementById('date').value;
+        const isoDate = dateInput.value;
+        if (!isoDate) {
+          alert("Veuillez sélectionner une date.");
+          return;
+        }
+
         const question = document.getElementById('question').value;
         const startTime = document.getElementById('startTime').value;
         const endTime = document.getElementById('endTime').value;
@@ -102,20 +158,20 @@
           .map(opt => opt.value.trim())
           .filter(Boolean);
 
-        if (!date || !question || options.length < 2) {
-          alert("Veuillez remplir tous les champs avec au moins deux options.");
+        if (options.length < 2) {
+          alert("Veuillez entrer au moins deux options.");
           return;
         }
 
-        const startDateTime = new Date(`${date}T${startTime}`);
-        const endDateTime = new Date(`${date}T${endTime}`);
+        const startDateTime = new Date(`${isoDate}T${startTime}`);
+        const endDateTime = new Date(`${isoDate}T${endTime}`);
 
         if (startDateTime >= endDateTime) {
-          alert("L'heure de fin doit être postérieure à l'heure de début.");
+          alert("L'heure de fin doit être après l'heure de début.");
           return;
         }
 
-        const pollRef = doc(db, "polls", date);
+        const pollRef = doc(db, "polls", isoDate);
         await setDoc(pollRef, {
           question,
           options,
@@ -125,6 +181,7 @@
         });
 
         form.reset();
+        formattedDate.textContent = '';
         optionsContainer.innerHTML = '';
         for (let i = 0; i < 2; i++) {
           const input = document.createElement('input');
@@ -134,8 +191,9 @@
           input.required = true;
           optionsContainer.appendChild(input);
         }
+
         updateOptionInputs();
-        message.textContent = `Sondage créé ou mis à jour pour le ${date}`;
+        message.textContent = `Sondage créé ou mis à jour pour le ${toFRDate(isoDate)}`;
       };
     });
   </script>
@@ -145,6 +203,7 @@
   <form id="pollForm">
     <label for="date">Date</label>
     <input type="date" id="date" required>
+    <small id="formattedDate"></small>
 
     <label for="startTime">Heure de début</label>
     <input type="time" id="startTime" required value="00:00">
@@ -156,10 +215,7 @@
     <textarea id="question" rows="2" required placeholder="Quelle est votre saison préférée ?"></textarea>
 
     <label>Options de réponse (2 à 8)</label>
-    <div id="optionsContainer">
-      <input type="text" class="option-input" placeholder="Option 1" required>
-      <input type="text" class="option-input" placeholder="Option 2" required>
-    </div>
+    <div id="optionsContainer"></div>
     <button type="button" id="addOption">Ajouter une option</button>
 
     <button type="submit">Créer / Mettre à jour</button>
