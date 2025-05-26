@@ -116,11 +116,8 @@ document.addEventListener("DOMContentLoaded", () => {
     bEl.style.display = "block";
 
     if (await hasVoted(pollId)) {
-      if (await waitForGAMStatus()) {
-        listenToResults();
-        setTimeout(listenToResults, 1000); // 🔁 Retry in case pubads loads after slotRenderEnded
-      }
-      else aEl.innerHTML = `<span style='color: #000;'>Connectez-vous pour voir les résultats du sondage. <a href="/connexion" style="color: #d51D2C; text-decoration: underline;">Se connecter</a></span>`;
+      if (await waitForGAMStatus()) listenToResults();
+      else aEl.innerHTML = `Connectez-vous pour voir les résultats du sondage. <a href="/connexion">Se connecter</a>`;
       oEl.style.display = "none";
       bEl.style.display = "none";
     }
@@ -155,9 +152,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function listenToResults() {
     const rEl = document.getElementById("poll-results");
-    rEl.style.display = "block";
-    rEl.innerHTML = "<em>Chargement des résultats…</em>";
-    const rEl = document.getElementById("poll-results");
     onSnapshot(doc(db, "polls", pollId), docSnap => {
       const data = docSnap.data();
       const total = data.votes.reduce((a, b) => a + b, 0);
@@ -180,3 +174,4 @@ document.addEventListener("DOMContentLoaded", () => {
   renderPoll();
 });
 </script>
+ 
