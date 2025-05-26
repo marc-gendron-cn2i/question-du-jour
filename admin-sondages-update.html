@@ -45,10 +45,11 @@
       font-weight: 600;
       color: green;
     }
-    #formattedDate {
-      margin-top: 0.3rem;
-      font-size: 0.9rem;
+    small {
       color: #333;
+      font-size: 0.9rem;
+      display: block;
+      margin-top: 0.3rem;
     }
   </style>
 
@@ -69,9 +70,28 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    function toFRDate(isoDate) {
-      const [yyyy, mm, dd] = isoDate.split('-');
-      return `${dd}-${mm}-${yyyy}`;
+    function updateDateTimePreviews() {
+      const d1 = document.getElementById('dateDebut').value;
+      const h1 = document.getElementById('heureDebut').value;
+      const d2 = document.getElementById('dateFin').value;
+      const h2 = document.getElementById('heureFin').value;
+
+      const prev1 = document.getElementById('startDateTimePreview');
+      const prev2 = document.getElementById('endDateTimePreview');
+
+      if (d1 && h1) {
+        const dt1 = new Date(`${d1}T${h1}:00`);
+        prev1.textContent = `Début prévu : ${dt1.toLocaleString('fr-CA')}`;
+      } else {
+        prev1.textContent = '';
+      }
+
+      if (d2 && h2) {
+        const dt2 = new Date(`${d2}T${h2}:00`);
+        prev2.textContent = `Fin prévue : ${dt2.toLocaleString('fr-CA')}`;
+      } else {
+        prev2.textContent = '';
+      }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -79,8 +99,6 @@
       const message = document.getElementById('successMessage');
       const optionsContainer = document.getElementById('optionsContainer');
       const addOptionButton = document.getElementById('addOption');
-      const dateInput = document.getElementById('date');
-      const formattedDate = document.getElementById('formattedDate');
 
       const updateOptionInputs = () => {
         const currentInputs = optionsContainer.querySelectorAll('input.option-input');
@@ -100,7 +118,6 @@
         }
       });
 
-      // Initialisation : 2 champs option
       for (let i = 0; i < 2; i++) {
         const input = document.createElement('input');
         input.type = 'text';
@@ -112,48 +129,33 @@
 
       updateOptionInputs();
 
-      dateInput.addEventListener('change', async () => {
-        const isoDate = dateInput.value;
-        if (!isoDate) return;
-
-        formattedDate.textContent = `Date sélectionnée : ${toFRDate(isoDate)}`;
-
-        const pollRef = doc(db, "polls", isoDate);
-        const snapshot = await getDoc(pollRef);
-
-        if (snapshot.exists()) {
-          const data = snapshot.data();
-          document.getElementById('question').value = data.question || '';
-          document.getElementById('startTime').value = data.startTime?.substring(11, 16) || '00:00';
-          document.getElementById('endTime').value = data.endTime?.substring(11, 16) || '23:59';
-
-          optionsContainer.innerHTML = '';
-          data.options.forEach((opt, idx) => {
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'option-input';
-            input.placeholder = `Option ${idx + 1}`;
-            input.required = true;
-            input.value = opt;
-            optionsContainer.appendChild(input);
-          });
-          updateOptionInputs();
-        }
+      ['dateDebut', 'heureDebut', 'dateFin', 'heureFin'].forEach(id => {
+        document.getElementById(id).addEventListener('change', updateDateTimePreviews);
+        document.getElementById(id).addEventListener('input', updateDateTimePreviews);
       });
 
       form.onsubmit = async (e) => {
         e.preventDefault();
 
-        const isoDate = dateInput.value;
-        if (!isoDate) {
-          alert("Veuillez sélectionner une date.");
+        const dateDebut = document.getElementById('dateDebut').value;
+        const heureDebut = document.getElementById('heureDebut').value;
+        const dateFin = document.getElementById('dateFin').value;
+        const heureFin = document.getElementById('heureFin').value;
+
+        if (!dateDebut || !heureDebut || !dateFin || !heureFin) {
+          alert("Veuillez remplir toutes les dates et heures.");
+          return;
+        }
+
+        const startDateTime = new Date(`${dateDebut}T${heureDebut}:00`);
+        const endDateTime = new Date(`${dateFin}T${heureFin}:00`);
+
+        if (startDateTime >= endDateTime) {
+          alert("La date de fin doit être après celle de début.");
           return;
         }
 
         const question = document.getElementById('question').value;
-        const startTime = document.getElementById('startTime').value;
-        const endTime = document.getElementById('endTime').value;
-
         const options = Array.from(optionsContainer.querySelectorAll('input.option-input'))
           .map(opt => opt.value.trim())
           .filter(Boolean);
@@ -163,25 +165,18 @@
           return;
         }
 
-        const startDateTime = new Date(`${isoDate}T${startTime}`);
-        const endDateTime = new Date(`${isoDate}T${endTime}`);
-
-        if (startDateTime >= endDateTime) {
-          alert("L'heure de fin doit être après l'heure de début.");
-          return;
-        }
-
-        const pollRef = doc(db, "polls", isoDate);
+        const pollRef = doc(db, "polls", dateDebut); // ou startDateTime.toISOString().slice(0, 10)
         await setDoc(pollRef, {
           question,
           options,
           votes: Array(options.length).fill(0),
-          startTime: startDateTime.toISOString(),
-          endTime: endDateTime.toISOString()
+          startDateTime: startDateTime.toISOString(),
+          endDateTime: endDateTime.toISOString()
         });
 
         form.reset();
-        formattedDate.textContent = '';
+        document.getElementById('startDateTimePreview').textContent = '';
+        document.getElementById('endDateTimePreview').textContent = '';
         optionsContainer.innerHTML = '';
         for (let i = 0; i < 2; i++) {
           const input = document.createElement('input');
@@ -193,7 +188,7 @@
         }
 
         updateOptionInputs();
-        message.textContent = `Sondage créé ou mis à jour pour le ${toFRDate(isoDate)}`;
+        message.textContent = `Sondage créé pour le ${dateDebut}`;
       };
     });
   </script>
@@ -201,15 +196,19 @@
 <body>
   <h1>Créer une question du jour</h1>
   <form id="pollForm">
-    <label for="date">Date</label>
-    <input type="date" id="date" required>
-    <small id="formattedDate"></small>
+    <label for="dateDebut">Date de début</label>
+    <input type="date" id="dateDebut" required>
 
-    <label for="startTime">Heure de début</label>
-    <input type="time" id="startTime" required value="00:00">
+    <label for="heureDebut">Heure de début</label>
+    <input type="time" id="heureDebut" required value="00:00">
+    <small id="startDateTimePreview"></small>
 
-    <label for="endTime">Heure de fin</label>
-    <input type="time" id="endTime" required value="23:59">
+    <label for="dateFin">Date de fin</label>
+    <input type="date" id="dateFin" required>
+
+    <label for="heureFin">Heure de fin</label>
+    <input type="time" id="heureFin" required value="23:59">
+    <small id="endDateTimePreview"></small>
 
     <label for="question">Question</label>
     <textarea id="question" rows="2" required placeholder="Quelle est votre saison préférée ?"></textarea>
