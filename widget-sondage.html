@@ -57,10 +57,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const arcId = getArcIdUUID();
     const voteSnap = await getDoc(doc(db, "votes", `${userId}_${date}`));
     if (voteSnap.exists()) return true;
-    if (!arcId) return false;
-
-    const querySnapshot = await getDoc(doc(db, "votes_by_arcid", `${arcId}_${date}`));
-    return querySnapshot.exists();
+    if (arcId) {
+      const arcSnap = await getDoc(doc(db, "votes_by_arcid", `${arcId}_${date}`));
+      if (arcSnap.exists()) return true;
+    }
+    return false;
   }
 
   async function renderPoll() {
@@ -87,7 +88,6 @@ document.addEventListener("DOMContentLoaded", () => {
       listenToResults();
       oEl.style.display = "none";
       bEl.style.display = "none";
-      return;
     }
   }
 
@@ -109,7 +109,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const index = parseInt(selected.value);
     const pollRef = doc(db, "polls", pollId);
     const voteRef = doc(db, "votes", `${userId}_${pollId}`);
-    const docSnap = await getDoc(pollRef);
+    const arcId = getArcIdUUID();
 
     await runTransaction(db, async (t) => {
       const pollDoc = await t.get(pollRef);
@@ -121,12 +121,25 @@ document.addEventListener("DOMContentLoaded", () => {
         userId,
         date: pollId,
         option: index,
-        ArcID: getArcIdUUID()
+        ArcID: arcId || null
       });
+
+      if (arcId) {
+        const arcVoteRef = doc(db, "votes_by_arcid", `${arcId}_${pollId}`);
+        t.set(arcVoteRef, {
+          arcId,
+          userId,
+          date: pollId,
+          option: index
+        });
+      }
     });
 
     if (isArcUserLoggedIn()) listenToResults();
-    else document.getElementById("poll-alert").innerHTML = `<span style='color: #000;'>Connectez-vous pour voir les résultats du sondage. <a href="/connexion" style="color: #d51D2C; text-decoration: underline;">Me connecter</a></span>`;
+    else document.getElementById("poll-alert").innerHTML =
+      `<span style='color: #000;'>Connectez-vous pour voir les résultats du sondage.
+        <a href="/connexion" style="color: #d51D2C; text-decoration: underline;">Me connecter</a></span>`;
+
     document.getElementById("poll-options").style.display = "none";
     document.getElementById("submit-poll").style.display = "none";
   }
