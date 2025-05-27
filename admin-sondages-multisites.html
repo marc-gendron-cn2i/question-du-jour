@@ -4,40 +4,79 @@
   <meta charset="UTF-8">
   <title>Créer une question du jour</title>
   <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&display=swap" rel="stylesheet">
-</head>
-<body>
-  <h1>Créer une question du jour</h1>
-  <form id="pollForm">
-    <label for="site">Site</label>
-    <select id="site" required>
-      <option value="lesoleil" selected>Le Soleil</option>
-      <option value="ledroit">Le Droit</option>
-      <option value="lenouvelliste">Le Nouvelliste</option>
-      <option value="lequotidien">Le Quotidien</option>
-      <option value="latribune">La Tribune</option>
-      <option value="lavoixdelest">La Voix de l'Est</option>
-    </select>
-
-    <label for="dateDebut">Date de début</label>
-    <input type="date" id="dateDebut" required>
-    <label for="heureDebut">Heure de début</label>
-    <input type="time" id="heureDebut" required>
-
-    <label for="dateFin">Date de fin</label>
-    <input type="date" id="dateFin" required>
-    <label for="heureFin">Heure de fin</label>
-    <input type="time" id="heureFin" required>
-
-    <label for="question">Question</label>
-    <textarea id="question" rows="2" required></textarea>
-
-    <div id="optionsContainer"></div>
-    <button type="button" id="addOption">Ajouter une option</button>
-    <button type="submit">Créer / Mettre à jour</button>
-    <div id="successMessage"></div>
-  </form>
-
+  <style>
+    body {
+      font-family: 'Red Hat Display', sans-serif;
+      max-width: 600px;
+      margin: 3rem auto;
+      padding: 1rem;
+      background: #f8f8f8;
+    }
+    h1 {
+      color: #d51D2C;
+    }
+    label {
+      display: block;
+      margin-top: 1rem;
+      font-weight: 600;
+    }
+    .inline-inputs {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .inline-inputs > div {
+      flex: 1;
+    }
+    input[type="text"], input[type="date"], input[type="time"], textarea, select {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-family: 'Red Hat Display', sans-serif;
+      box-sizing: border-box;
+    }
+    .option-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .drag-handle {
+      cursor: grab;
+      font-size: 1.2rem;
+      color: #888;
+      padding: 0 0.25rem;
+    }
+    .option-input {
+      flex: 1;
+    }
+    .remove-option {
+      background: transparent;
+      border: none;
+      font-size: 1.2rem;
+      color: #d51D2C;
+      cursor: pointer;
+      padding: 0 0.25rem;
+    }
+    button {
+      margin-top: 1.5rem;
+      background: #d51D2C;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .message {
+      margin-top: 1rem;
+      font-weight: 600;
+      color: #d51D2C;
+    }
+  </style>
   <script type="module">
+    import Sortable from "https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/+esm";
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
     import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
@@ -54,129 +93,225 @@
     const db = getFirestore(app);
 
     function toUTCStringFromLocal(dateStr, timeStr) {
-      const [year, month, day] = dateStr.split("-").map(Number);
-      const [hour, minute] = timeStr.split(":").map(Number);
       const localDate = new Date(`${dateStr}T${timeStr}:00`);
-      const utc = new Date(localDate.getTime() - (localDate.getTimezoneOffset() * 60000));
-      return utc.toISOString();
+      return localDate.toISOString();
     }
 
     function fromUTCToLocalInput(utcString) {
-      const date = new Date(utcString);
-      const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+      const local = new Date(utcString);
+      const yyyy = local.getFullYear();
+      const mm = String(local.getMonth() + 1).padStart(2, '0');
+      const dd = String(local.getDate()).padStart(2, '0');
+      const hours = String(local.getHours()).padStart(2, '0');
+      const minutes = String(local.getMinutes()).padStart(2, '0');
+
       return {
-        date: local.toISOString().slice(0, 10),
-        time: local.toTimeString().slice(0, 5)
+        date: `${yyyy}-${mm}-${dd}`,
+        time: `${hours}:${minutes}`
       };
     }
 
-    const form = document.getElementById('pollForm');
-    const message = document.getElementById('successMessage');
-    const optionsContainer = document.getElementById('optionsContainer');
-    const addOptionButton = document.getElementById('addOption');
+    function createOptionInput(value = "", removable = true) {
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      row.setAttribute('draggable', true);
 
-    function updateOptionInputs() {
-      const currentInputs = optionsContainer.querySelectorAll('input.option-input');
-      addOptionButton.disabled = currentInputs.length >= 8;
-    }
+      const dragIcon = document.createElement('span');
+      dragIcon.className = 'drag-handle';
+      dragIcon.textContent = '☰';
+      row.appendChild(dragIcon);
 
-    addOptionButton.addEventListener('click', () => {
       const input = document.createElement('input');
       input.type = 'text';
+      input.placeholder = 'Option';
       input.className = 'option-input';
-      input.placeholder = `Option ${optionsContainer.children.length + 1}`;
       input.required = true;
-      optionsContainer.appendChild(input);
-      updateOptionInputs();
-    });
+      input.value = value;
+      row.appendChild(input);
 
-    // Ajouter 2 champs par défaut
-    for (let i = 0; i < 2; i++) {
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'option-input';
-      input.placeholder = `Option ${i + 1}`;
-      input.required = true;
-      optionsContainer.appendChild(input);
+      if (removable) {
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-option';
+        removeBtn.innerHTML = '&times;';
+        removeBtn.onclick = () => row.remove();
+        row.appendChild(removeBtn);
+      }
+
+      return row;
     }
 
-    document.getElementById('dateDebut').addEventListener('change', async () => {
-      const pollId = document.getElementById('dateDebut').value;
-      const pollRef = doc(db, "polls", pollId);
-      const snapshot = await getDoc(pollRef);
+    function setDefaultTimes() {
+      const now = new Date();
+      const start = new Date(now);
+      start.setDate(start.getDate() + 1);
+      start.setHours(6, 0, 0, 0);
 
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        const start = fromUTCToLocalInput(data.startDateTime);
-        const end = fromUTCToLocalInput(data.endDateTime);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 1);
+      end.setHours(5, 59, 0, 0);
 
-        document.getElementById('question').value = data.question || '';
-        document.getElementById('site').value = data.site || '';
-        document.getElementById('dateFin').value = end.date;
-        document.getElementById('heureDebut').value = start.time;
-        document.getElementById('heureFin').value = end.time;
+      document.getElementById('dateDebut').value = start.toISOString().slice(0, 10);
+      document.getElementById('heureDebut').value = '06:00';
+      document.getElementById('dateFin').value = end.toISOString().slice(0, 10);
+      document.getElementById('heureFin').value = '05:59';
+    }
 
-        optionsContainer.innerHTML = '';
-        data.options.forEach((opt, idx) => {
-          const input = document.createElement('input');
-          input.type = 'text';
-          input.className = 'option-input';
-          input.placeholder = `Option ${idx + 1}`;
-          input.required = true;
-          input.value = opt;
-          optionsContainer.appendChild(input);
-        });
-        updateOptionInputs();
-        message.textContent = "Sondage chargé et modifiable.";
-      } else {
-        message.textContent = "Nouveau sondage. À créer.";
-      }
-    });
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('pollForm');
+      const optionsContainer = document.getElementById('optionsContainer');
+      const addOptionButton = document.getElementById('addOption');
+      const message = document.getElementById('successMessage');
 
-    form.onsubmit = async (e) => {
-      e.preventDefault();
+      setDefaultTimes();
 
-      const pollId = document.getElementById('dateDebut').value;
-      const dateDebut = document.getElementById('dateDebut').value;
-      const heureDebut = document.getElementById('heureDebut').value;
-      const dateFin = document.getElementById('dateFin').value;
-      const heureFin = document.getElementById('heureFin').value;
-      const site = document.getElementById('site').value;
-      const question = document.getElementById('question').value;
-      const options = Array.from(document.querySelectorAll('.option-input'))
-        .map(opt => opt.value.trim())
-        .filter(Boolean);
+      optionsContainer.appendChild(createOptionInput("", false));
+      optionsContainer.appendChild(createOptionInput("", false));
 
-      if (options.length < 2) {
-        alert("Veuillez entrer au moins deux options.");
-        return;
-      }
-
-      const startDateTimeStr = toUTCStringFromLocal(dateDebut, heureDebut);
-      const endDateTimeStr = toUTCStringFromLocal(dateFin, heureFin);
-
-      await setDoc(doc(db, "polls", pollId), {
-        question,
-        options,
-        votes: Array(options.length).fill(0),
-        startDateTime: startDateTimeStr,
-        endDateTime: endDateTimeStr,
-        site
+      addOptionButton.addEventListener('click', () => {
+        const currentInputs = optionsContainer.querySelectorAll('input.option-input');
+        if (currentInputs.length < 8) {
+          optionsContainer.appendChild(createOptionInput());
+        }
       });
 
-      form.reset();
-      optionsContainer.innerHTML = '';
-      for (let i = 0; i < 2; i++) {
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'option-input';
-        input.placeholder = `Option ${i + 1}`;
-        input.required = true;
-        optionsContainer.appendChild(input);
-      }
-      updateOptionInputs();
-      message.textContent = "Sondage enregistré avec succès.";
-    };
+      new Sortable(optionsContainer, {
+        animation: 150,
+        handle: '.drag-handle',
+        ghostClass: 'dragging'
+      });
+
+      document.getElementById('dateDebut').addEventListener('change', async () => {
+        const dateDebut = document.getElementById('dateDebut').value;
+        const pollRef = doc(db, "polls", dateDebut);
+        const snapshot = await getDoc(pollRef);
+
+        const d = new Date(`${dateDebut}T06:00:00`);
+        const end = new Date(d);
+        end.setDate(d.getDate() + 1);
+        document.getElementById('heureDebut').value = '06:00';
+        document.getElementById('dateFin').value = end.toISOString().slice(0, 10);
+        document.getElementById('heureFin').value = '05:59';
+
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          const now = new Date();
+          const isOver = now >= new Date(data.endDateTime);
+
+          const start = fromUTCToLocalInput(data.startDateTime);
+          const fin = fromUTCToLocalInput(data.endDateTime);
+
+          document.getElementById('dateDebut').value = start.date;
+          document.getElementById('heureDebut').value = start.time;
+          document.getElementById('dateFin').value = fin.date;
+          document.getElementById('heureFin').value = fin.time;
+          document.getElementById('question').value = data.question || '';
+          document.getElementById('site').value = data.site || 'lesoleil';
+
+          optionsContainer.innerHTML = '';
+          data.options.forEach((opt, idx) => {
+            optionsContainer.appendChild(createOptionInput(opt, idx >= 2));
+          });
+
+          if (isOver) {
+            document.querySelectorAll('#pollForm input, #pollForm textarea, #pollForm button, #pollForm select').forEach(el => {
+              if (el.id !== 'dateDebut') el.disabled = true;
+            });
+            message.textContent = "Ce sondage est terminé. Vous pouvez le consulter, mais pas le modifier.";
+          } else {
+            message.textContent = "Sondage actif. Vous pouvez le modifier.";
+          }
+        } else {
+          message.textContent = "";
+          document.querySelectorAll('#pollForm input, #pollForm textarea, #pollForm button, #pollForm select').forEach(el => {
+            el.disabled = false;
+          });
+          optionsContainer.innerHTML = '';
+          optionsContainer.appendChild(createOptionInput("", false));
+          optionsContainer.appendChild(createOptionInput("", false));
+          document.getElementById('site').value = 'lesoleil';
+        }
+      });
+
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const dateDebut = document.getElementById('dateDebut').value;
+        const heureDebut = document.getElementById('heureDebut').value;
+        const dateFin = document.getElementById('dateFin').value;
+        const heureFin = document.getElementById('heureFin').value;
+        const question = document.getElementById('question').value;
+        const site = document.getElementById('site').value;
+
+        const options = Array.from(document.querySelectorAll('.option-input'))
+          .map(opt => opt.value.trim())
+          .filter(Boolean);
+
+        if (options.length < 2) {
+          alert("Veuillez entrer au moins deux options.");
+          return;
+        }
+
+        const pollRef = doc(db, "polls", dateDebut);
+        const startDateTime = toUTCStringFromLocal(dateDebut, heureDebut);
+        const endDateTime = toUTCStringFromLocal(dateFin, heureFin);
+
+        await setDoc(pollRef, {
+          question,
+          options,
+          site,
+          votes: Array(options.length).fill(0),
+          startDateTime,
+          endDateTime
+        });
+
+        message.textContent = `Sondage enregistré pour le ${dateDebut}`;
+        form.reset();
+        setDefaultTimes();
+        document.getElementById('site').value = 'lesoleil';
+      };
+    });
   </script>
+</head>
+<body>
+  <h1>Créer une question du jour</h1>
+  <form id="pollForm">
+
+    <label for="site">Site</label>
+    <select id="site" required>
+      <option value="lesoleil" selected>Le Soleil</option>
+      <option value="ledroit">Le Droit</option>
+      <option value="lenouvelliste">Le Nouvelliste</option>
+      <option value="lequotidien">Le Quotidien</option>
+      <option value="latribune">La Tribune</option>
+      <option value="lavoixdelest">La Voix de l'Est</option>
+    </select>
+
+    <div class="inline-inputs">
+      <div>
+        <label for="dateDebut">Date de début</label>
+        <input type="date" id="dateDebut" required>
+      </div>
+      <div>
+        <label for="heureDebut">Heure de début</label>
+        <input type="time" id="heureDebut" required>
+      </div>
+    </div>
+    <div class="inline-inputs">
+      <div>
+        <label for="dateFin">Date de fin</label>
+        <input type="date" id="dateFin" required>
+      </div>
+      <div>
+        <label for="heureFin">Heure de fin</label>
+        <input type="time" id="heureFin" required>
+      </div>
+    </div>
+    <label for="question">Question</label>
+    <textarea id="question" rows="2" required></textarea>
+    <label>Options (2 à 8)</label>
+    <div id="optionsContainer"></div>
+    <button type="button" id="addOption">Ajouter une option</button>
+    <button type="submit">Créer / Mettre à jour</button>
+    <div class="message" id="successMessage"></div>
+  </form>
 </body>
 </html>
