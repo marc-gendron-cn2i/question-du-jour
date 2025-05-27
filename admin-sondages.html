@@ -20,12 +20,15 @@
       margin-top: 1rem;
       font-weight: 600;
     }
-    input[type="text"], textarea {
+    input[type="text"], input[type="date"], input[type="time"], textarea, select {
       width: 100%;
       padding: 0.5rem;
       border: 1px solid #ccc;
       border-radius: 6px;
       font-family: 'Red Hat Display', sans-serif;
+    }
+    .option-input {
+      margin-bottom: 0.5rem;
     }
     button {
       margin-top: 1.5rem;
@@ -40,12 +43,27 @@
     .message {
       margin-top: 1rem;
       font-weight: 600;
-      color: green;
+    }
+    small {
+      color: #333;
+      font-size: 0.9rem;
+      display: block;
+      margin-top: 0.3rem;
+    }
+    .flex-row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .flex-col {
+      flex: 1 1 45%;
+      margin-bottom: 1rem;
     }
   </style>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDMJGl7E0O_Q2Tj7GPRM0XQTyJ4N6Wph2A",
@@ -60,50 +78,271 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    function formatDateFR(date) {
+      return date.toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+      }) + ' à ' + date.toLocaleTimeString('fr-FR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    }
+
+    function updateDateTimePreviews() {
+      const d1 = document.getElementById('dateDebut').value;
+      const h1 = document.getElementById('heureDebut').value;
+      const d2 = document.getElementById('dateFin').value;
+      const h2 = document.getElementById('heureFin').value;
+
+      const prev1 = document.getElementById('startDateTimePreview');
+      const prev2 = document.getElementById('endDateTimePreview');
+
+      if (d1 && h1) {
+        const dt1 = new Date(`${d1}T${h1}:00`);
+        prev1.textContent = `Début prévu : ${formatDateFR(dt1)}`;
+      } else {
+        prev1.textContent = '';
+      }
+
+      if (d2 && h2) {
+        const dt2 = new Date(`${d2}T${h2}:00`);
+        prev2.textContent = `Fin prévue : ${formatDateFR(dt2)}`;
+      } else {
+        prev2.textContent = '';
+      }
+    }
+
+    function setFormDisabled(disabled) {
+      document.querySelectorAll('#pollForm input, #pollForm textarea, #pollForm button, #pollForm select').forEach(el => {
+        if (el.id !== 'dateDebut') el.disabled = disabled;
+      });
+    }
+
+    function setDefaultDates() {
+      const now = new Date();
+
+      const dateDebut = new Date(now);
+      dateDebut.setDate(now.getDate() + 1);
+      dateDebut.setHours(6, 0, 0, 0);
+
+      const dateFin = new Date(now);
+      dateFin.setDate(now.getDate() + 2);
+      dateFin.setHours(5, 59, 0, 0); // ✅ Fin à 05:59
+
+      const toDateInput = d => d.toISOString().slice(0, 10);
+      const toTimeInput = d => d.toTimeString().slice(0, 5);
+
+      document.getElementById('dateDebut').value = toDateInput(dateDebut);
+      document.getElementById('heureDebut').value = toTimeInput(dateDebut);
+      document.getElementById('dateFin').value = toDateInput(dateFin);
+      document.getElementById('heureFin').value = toTimeInput(dateFin);
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+      setDefaultDates();
+
       const form = document.getElementById('pollForm');
       const message = document.getElementById('successMessage');
+      const optionsContainer = document.getElementById('optionsContainer');
+      const addOptionButton = document.getElementById('addOption');
+
+      const updateOptionInputs = () => {
+        const currentInputs = optionsContainer.querySelectorAll('input.option-input');
+        addOptionButton.disabled = currentInputs.length >= 8;
+      };
+
+      addOptionButton.addEventListener('click', () => {
+        const currentInputs = optionsContainer.querySelectorAll('input.option-input');
+        if (currentInputs.length < 8) {
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.placeholder = `Option ${currentInputs.length + 1}`;
+          input.className = 'option-input';
+          input.required = true;
+          optionsContainer.appendChild(input);
+          updateOptionInputs();
+        }
+      });
+
+      for (let i = 0; i < 2; i++) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = `Option ${i + 1}`;
+        input.className = 'option-input';
+        input.required = true;
+        optionsContainer.appendChild(input);
+      }
+
+      updateOptionInputs();
+
+      ['dateDebut', 'heureDebut', 'dateFin', 'heureFin'].forEach(id => {
+        document.getElementById(id).addEventListener('change', updateDateTimePreviews);
+        document.getElementById(id).addEventListener('input', updateDateTimePreviews);
+      });
+
+      document.getElementById('dateDebut').addEventListener('change', async () => {
+        const dateDebut = document.getElementById('dateDebut').value;
+        if (!dateDebut) return;
+
+        const pollRef = doc(db, "polls", dateDebut);
+        const snapshot = await getDoc(pollRef);
+
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+
+          document.getElementById('question').value = data.question || '';
+          document.getElementById('site').value = data.site || '';
+          document.getElementById('dateFin').value = data.endDateTime?.substring(0, 10) || '';
+          document.getElementById('heureDebut').value = data.startDateTime?.substring(11, 16) || '06:00';
+          document.getElementById('heureFin').value = data.endDateTime?.substring(11, 16) || '05:59';
+
+          optionsContainer.innerHTML = '';
+          data.options.forEach((opt, idx) => {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'option-input';
+            input.placeholder = `Option ${idx + 1}`;
+            input.required = true;
+            input.value = opt;
+            optionsContainer.appendChild(input);
+          });
+          updateOptionInputs();
+          updateDateTimePreviews();
+
+          const now = new Date();
+          const end = new Date(data.endDateTime);
+          const isOver = now >= end;
+
+          setFormDisabled(isOver);
+          message.textContent = isOver
+            ? "Ce sondage est terminé. Vous pouvez le consulter, mais pas le modifier."
+            : "Ce sondage est actif. Vous pouvez le modifier.";
+        } else {
+          setFormDisabled(false);
+          optionsContainer.innerHTML = '';
+          for (let i = 0; i < 2; i++) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = `Option ${i + 1}`;
+            input.className = 'option-input';
+            input.required = true;
+            optionsContainer.appendChild(input);
+          }
+          updateOptionInputs();
+          message.textContent = "Nouveau sondage. Remplissez les champs pour le créer.";
+        }
+      });
 
       form.onsubmit = async (e) => {
         e.preventDefault();
-        const date = document.getElementById('date').value;
-        const question = document.getElementById('question').value;
-        const options = document.getElementById('options').value.split('\n').map(opt => opt.trim()).filter(Boolean);
 
-        if (!date || !question || options.length < 2) {
-          alert("Veuillez remplir tous les champs avec au moins deux options.");
+        const dateDebut = document.getElementById('dateDebut').value;
+        const heureDebut = document.getElementById('heureDebut').value;
+        const dateFin = document.getElementById('dateFin').value;
+        const heureFin = document.getElementById('heureFin').value;
+        const site = document.getElementById('site').value;
+
+        const startDateTime = new Date(`${dateDebut}T${heureDebut}:00`);
+        const endDateTime = new Date(`${dateFin}T${heureFin}:00`);
+
+        if (startDateTime >= endDateTime) {
+          alert("La date de fin doit être après celle de début.");
           return;
         }
 
-        const pollRef = doc(db, "polls", date);
+        const question = document.getElementById('question').value;
+        const options = Array.from(document.querySelectorAll('.option-input'))
+          .map(opt => opt.value.trim())
+          .filter(Boolean);
+
+        if (options.length < 2) {
+          alert("Veuillez entrer au moins deux options.");
+          return;
+        }
+
+        const pollRef = doc(db, "polls", dateDebut);
         await setDoc(pollRef, {
           question,
           options,
-          votes: Array(options.length).fill(0)
+          votes: Array(options.length).fill(0),
+          startDateTime: startDateTime.toISOString(),
+          endDateTime: endDateTime.toISOString(),
+          site
         });
 
         form.reset();
-        message.textContent = `Sondage créé pour le ${date}`;
-      }
+        setDefaultDates();
+        document.getElementById('startDateTimePreview').textContent = '';
+        document.getElementById('endDateTimePreview').textContent = '';
+        optionsContainer.innerHTML = '';
+        for (let i = 0; i < 2; i++) {
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.placeholder = `Option ${i + 1}`;
+          input.className = 'option-input';
+          input.required = true;
+          optionsContainer.appendChild(input);
+        }
+
+        updateOptionInputs();
+        message.textContent = `Sondage créé pour le ${formatDateFR(startDateTime)} (${site})`;
+      };
     });
   </script>
 </head>
 <body>
   <h1>Créer une question du jour</h1>
   <form id="pollForm">
-    <label for="date">Date (YYYY-MM-DD)</label>
-    <input type="text" id="date" required placeholder="2025-05-28">
+
+<!-- [...] En-tête et style inchangés -->
+
+<!-- Champ site avec valeur par défaut "lesoleil" -->
+<label for="site">Site</label>
+<select id="site" required>
+  <option value="lesoleil" selected>Le Soleil</option>
+  <option value="ledroit">Le Droit</option>
+  <option value="lenouvelliste">Le Nouvelliste</option>
+  <option value="lequotidien">Le Quotidien</option>
+  <option value="latribune">La Tribune</option>
+  <option value="lavoixdelest">La Voix de l'Est</option>
+</select>
+
+
+    <div class="flex-row">
+      <div class="flex-col">
+        <label for="dateDebut">Date de début</label>
+        <input type="date" id="dateDebut" required>
+      </div>
+      <div class="flex-col">
+        <label for="heureDebut">Heure de début</label>
+        <input type="time" id="heureDebut" required>
+      </div>
+    </div>
+    <small id="startDateTimePreview"></small>
+
+    <div class="flex-row">
+      <div class="flex-col">
+        <label for="dateFin">Date de fin</label>
+        <input type="date" id="dateFin" required>
+      </div>
+      <div class="flex-col">
+        <label for="heureFin">Heure de fin</label>
+        <input type="time" id="heureFin" required>
+      </div>
+    </div>
+    <small id="endDateTimePreview"></small>
 
     <label for="question">Question</label>
     <textarea id="question" rows="2" required placeholder="Quelle est votre saison préférée ?"></textarea>
 
-    <label for="options">Options (une par ligne)</label>
-    <textarea id="options" rows="4" required placeholder="Printemps
-Été
-Automne
-Hiver"></textarea>
+    <label>Options de réponse (2 à 8)</label>
+    <div id="optionsContainer"></div>
+    <button type="button" id="addOption">Ajouter une option</button>
 
-    <button type="submit">Créer le sondage</button>
+    <button type="submit">Créer / Mettre à jour</button>
     <div class="message" id="successMessage"></div>
   </form>
 </body>
