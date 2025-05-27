@@ -297,16 +297,19 @@
   <h1>Créer une question du jour</h1>
   <form id="pollForm">
 
-    <label for="site">Site</label>
-    <select id="site" required>
-      <option value="">Choisir un site</option>
-      <option value="lesoleil">Le Soleil</option>
-      <option value="ledroit">Le Droit</option>
-      <option value="lenouvelliste">Le Nouvelliste</option>
-      <option value="lequotidien">Le Quotidien</option>
-      <option value="latribune">La Tribune</option>
-      <option value="lavoixdelest">La Voix de l'Est</option>
-    </select>
+<!-- [...] En-tête et style inchangés -->
+
+<!-- Champ site avec valeur par défaut "lesoleil" -->
+<label for="site">Site</label>
+<select id="site" required>
+  <option value="lesoleil" selected>Le Soleil</option>
+  <option value="ledroit">Le Droit</option>
+  <option value="lenouvelliste">Le Nouvelliste</option>
+  <option value="lequotidien">Le Quotidien</option>
+  <option value="latribune">La Tribune</option>
+  <option value="lavoixdelest">La Voix de l'Est</option>
+</select>
+
 
     <div class="flex-row">
       <div class="flex-col">
