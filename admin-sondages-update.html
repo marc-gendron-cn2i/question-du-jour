@@ -130,7 +130,7 @@
 
       const dateFin = new Date(now);
       dateFin.setDate(now.getDate() + 2);
-      dateFin.setHours(6, 0, 0, 0);
+      dateFin.setHours(5, 59, 0, 0); // ✅ 05:59 comme demandé
 
       const toDateInput = d => d.toISOString().slice(0, 10);
       const toTimeInput = d => d.toTimeString().slice(0, 5);
@@ -195,8 +195,8 @@
 
           document.getElementById('question').value = data.question || '';
           document.getElementById('dateFin').value = data.endDateTime?.substring(0, 10) || '';
-          document.getElementById('heureDebut').value = data.startDateTime?.substring(11, 16) || '00:00';
-          document.getElementById('heureFin').value = data.endDateTime?.substring(11, 16) || '23:59';
+          document.getElementById('heureDebut').value = data.startDateTime?.substring(11, 16) || '06:00';
+          document.getElementById('heureFin').value = data.endDateTime?.substring(11, 16) || '05:59';
 
           optionsContainer.innerHTML = '';
           data.options.forEach((opt, idx) => {
