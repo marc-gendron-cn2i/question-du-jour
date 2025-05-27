@@ -43,7 +43,6 @@
     .message {
       margin-top: 1rem;
       font-weight: 600;
-      color: green;
     }
     small {
       color: #333;
@@ -55,6 +54,7 @@
       display: flex;
       gap: 1rem;
       flex-wrap: wrap;
+      margin-bottom: 0.5rem;
     }
     .flex-col {
       flex: 1 1 45%;
@@ -63,7 +63,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDMJGl7E0O_Q2Tj7GPRM0XQTyJ4N6Wph2A",
@@ -115,6 +115,12 @@
       }
     }
 
+    function setFormDisabled(disabled) {
+      document.querySelectorAll('#pollForm input, #pollForm textarea, #pollForm button').forEach(el => {
+        if (el.id !== 'dateDebut') el.disabled = disabled;
+      });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       const form = document.getElementById('pollForm');
       const message = document.getElementById('successMessage');
@@ -155,6 +161,58 @@
         document.getElementById(id).addEventListener('input', updateDateTimePreviews);
       });
 
+      document.getElementById('dateDebut').addEventListener('change', async () => {
+        const dateDebut = document.getElementById('dateDebut').value;
+        if (!dateDebut) return;
+
+        const pollRef = doc(db, "polls", dateDebut);
+        const snapshot = await getDoc(pollRef);
+
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+
+          document.getElementById('question').value = data.question || '';
+          document.getElementById('dateFin').value = data.endDateTime?.substring(0, 10) || '';
+          document.getElementById('heureDebut').value = data.startDateTime?.substring(11, 16) || '00:00';
+          document.getElementById('heureFin').value = data.endDateTime?.substring(11, 16) || '23:59';
+
+          optionsContainer.innerHTML = '';
+          data.options.forEach((opt, idx) => {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'option-input';
+            input.placeholder = `Option ${idx + 1}`;
+            input.required = true;
+            input.value = opt;
+            optionsContainer.appendChild(input);
+          });
+          updateOptionInputs();
+          updateDateTimePreviews();
+
+          const now = new Date();
+          const end = new Date(data.endDateTime);
+          const isOver = now >= end;
+
+          setFormDisabled(isOver);
+          message.textContent = isOver
+            ? "Ce sondage est terminé. Vous pouvez le consulter, mais pas le modifier."
+            : "Ce sondage est actif. Vous pouvez le modifier.";
+        } else {
+          setFormDisabled(false);
+          optionsContainer.innerHTML = '';
+          for (let i = 0; i < 2; i++) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = `Option ${i + 1}`;
+            input.className = 'option-input';
+            input.required = true;
+            optionsContainer.appendChild(input);
+          }
+          updateOptionInputs();
+          message.textContent = "Nouveau sondage. Remplissez les champs pour le créer.";
+        }
+      });
+
       form.onsubmit = async (e) => {
         e.preventDefault();
 
@@ -186,7 +244,7 @@
           return;
         }
 
-        const pollRef = doc(db, "polls", dateDebut); // peut être ajusté à une clé unique
+        const pollRef = doc(db, "polls", dateDebut);
         await setDoc(pollRef, {
           question,
           options,
