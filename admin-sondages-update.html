@@ -20,6 +20,13 @@
       margin-top: 1rem;
       font-weight: 600;
     }
+    .inline-inputs {
+      display: flex;
+      gap: 1rem;
+    }
+    .inline-inputs > div {
+      flex: 1;
+    }
     input[type="text"], input[type="date"], input[type="time"], textarea {
       width: 100%;
       padding: 0.5rem;
@@ -62,8 +69,8 @@
     const db = getFirestore(app);
 
     function toUTCStringFromLocal(dateStr, timeStr) {
-  return new Date(`${dateStr}T${timeStr}:00`).toISOString();
-}
+      return new Date(`${dateStr}T${timeStr}:00`).toISOString();
+    }
 
     function fromUTCToLocalInput(utcString) {
       const utcDate = new Date(utcString);
@@ -177,14 +184,26 @@
 <body>
   <h1>Créer une question du jour</h1>
   <form id="pollForm">
-    <label for="dateDebut">Date de début</label>
-    <input type="date" id="dateDebut" required>
-    <label for="heureDebut">Heure de début</label>
-    <input type="time" id="heureDebut" required>
-    <label for="dateFin">Date de fin</label>
-    <input type="date" id="dateFin" required>
-    <label for="heureFin">Heure de fin</label>
-    <input type="time" id="heureFin" required>
+    <div class="inline-inputs">
+      <div>
+        <label for="dateDebut">Date de début</label>
+        <input type="date" id="dateDebut" required>
+      </div>
+      <div>
+        <label for="heureDebut">Heure de début</label>
+        <input type="time" id="heureDebut" required>
+      </div>
+    </div>
+    <div class="inline-inputs">
+      <div>
+        <label for="dateFin">Date de fin</label>
+        <input type="date" id="dateFin" required>
+      </div>
+      <div>
+        <label for="heureFin">Heure de fin</label>
+        <input type="time" id="heureFin" required>
+      </div>
+    </div>
     <label for="question">Question</label>
     <textarea id="question" rows="2" required></textarea>
     <label>Options (2 à 8)</label>
