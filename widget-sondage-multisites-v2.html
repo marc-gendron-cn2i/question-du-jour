@@ -2,17 +2,59 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Widget de sondage</title>
+  <title>Créer une question du jour</title>
+  <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Red Hat Display', sans-serif; }
-    .poll-container {
-      border: 2px solid #d51D2C;
-      border-radius: 0px;
+    body {
+      font-family: 'Red Hat Display', sans-serif;
       max-width: 600px;
-      margin: 2rem auto;
-      padding: 1.5rem;
+      margin: 3rem auto;
+      padding: 1rem;
+      background: #f8f8f8;
     }
-    #submit-poll {
+    h1 { color: #d51D2C; }
+    label {
+      display: block;
+      margin-top: 1rem;
+      font-weight: 600;
+    }
+    .inline-inputs {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .inline-inputs > div { flex: 1; }
+    input[type="text"], input[type="date"], input[type="time"], textarea, select {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-family: 'Red Hat Display', sans-serif;
+      box-sizing: border-box;
+    }
+    .option-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .drag-handle {
+      cursor: grab;
+      font-size: 1.2rem;
+      color: #888;
+      padding: 0 0.25rem;
+    }
+    .option-input { flex: 1; }
+    .remove-option {
+      background: transparent;
+      border: none;
+      font-size: 1.2rem;
+      color: #d51D2C;
+      cursor: pointer;
+      padding: 0 0.25rem;
+    }
+    button {
+      margin-top: 1.5rem;
       background: #d51D2C;
       color: white;
       border: none;
@@ -20,42 +62,18 @@
       font-size: 16px;
       border-radius: 6px;
       cursor: pointer;
-      margin-top: 1rem;
     }
-    select {
+    .message {
       margin-top: 1rem;
-      padding: 6px;
-      font-size: 14px;
-      width: 100%;
-    }
-    .back-link {
-      margin-top: 1rem;
-      display: inline-block;
+      font-weight: 600;
       color: #d51D2C;
-      font-size: 14px;
-      text-decoration: underline;
-      cursor: pointer;
     }
   </style>
-</head>
-<body>
-  <div class="poll-container">
-    <div style="font-weight: bold; color: #d51D2C; display: flex; align-items: center; font-size: 18px; margin-bottom: 1rem;">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="margin-right: 0.5rem; width: 20px; height: 20px; fill: #d51D2C;">
-        <path d="M4 21h2V10H4v11zm7 0h2V3h-2v18zm7 0h2v-6h-2v6z"/>
-      </svg>
-      La question du jour
-    </div>
-    <div id="poll-question" style="font-weight: 700; font-size: 20px; margin-bottom: 1rem; color: #000;">Chargement…</div>
-    <div id="poll-options"></div>
-    <button id="submit-poll" style="display:none;">Soumettre</button>
-    <div id="poll-results" style="display:none;"></div>
-    <div id="poll-alert" style="margin-top: 1rem; color: #d51D2C;"></div>
-  </div>
 
   <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js';
-    import { getFirestore, doc, getDoc, runTransaction, onSnapshot, setDoc } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js';
+    import Sortable from "https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/+esm";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDMJGl7E0O_Q2Tj7GPRM0XQTyJ4N6Wph2A",
@@ -69,165 +87,222 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const CURRENT_SITE = "lesoleil";
-    const localDate = new Date().toLocaleString('en-CA', { timeZone: 'America/Toronto' }).split(',')[0];
-    const pollId = `${CURRENT_SITE}_${localDate}`;
-
-    const userId = localStorage.getItem("pollUserId") || (() => {
-      const uid = crypto.randomUUID();
-      localStorage.setItem("pollUserId", uid);
-      return uid;
-    })();
-
-    function getArcIdUUID() {
-      try {
-        const info = JSON.parse(localStorage.getItem("ArcId.USER_INFO"));
-        return info?.uuid || null;
-      } catch {
-        return null;
-      }
+    function getPollId(site, date) {
+      return `${site}_${date}`;
     }
 
-    async function hasVoted(date) {
-      const arcId = getArcIdUUID();
-      const localVote = await getDoc(doc(db, "votes", `${userId}_${date}`));
-      if (localVote.exists()) return true;
-      if (arcId) {
-        const arcVote = await getDoc(doc(db, "votes_by_arcid", `${arcId}_${date}`));
-        return arcVote.exists();
+    function createOptionInput(value = "", removable = true) {
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      row.setAttribute('draggable', true);
+
+      const dragIcon = document.createElement('span');
+      dragIcon.className = 'drag-handle';
+      dragIcon.textContent = '☰';
+      row.appendChild(dragIcon);
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = 'Option';
+      input.className = 'option-input';
+      input.required = true;
+      input.value = value;
+      row.appendChild(input);
+
+      if (removable) {
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-option';
+        removeBtn.innerHTML = '&times;';
+        removeBtn.onclick = () => row.remove();
+        row.appendChild(removeBtn);
       }
-      return false;
+
+      return row;
     }
 
-    async function renderPoll() {
-      const qEl = document.getElementById("poll-question");
-      const oEl = document.getElementById("poll-options");
-      const bEl = document.getElementById("submit-poll");
-      const aEl = document.getElementById("poll-alert");
-      const rEl = document.getElementById("poll-results");
+    function fromUTCToLocalInput(utcString) {
+      const local = new Date(utcString);
+      const yyyy = local.getFullYear();
+      const mm = String(local.getMonth() + 1).padStart(2, '0');
+      const dd = String(local.getDate()).padStart(2, '0');
+      const hours = String(local.getHours()).padStart(2, '0');
+      const minutes = String(local.getMinutes()).padStart(2, '0');
+      return { date: `${yyyy}-${mm}-${dd}`, time: `${hours}:${minutes}` };
+    }
 
-      qEl.innerHTML = "";
-      oEl.innerHTML = "";
-      aEl.textContent = "";
-      rEl.innerHTML = "";
-      rEl.style.display = "none";
+    function toUTCStringFromLocal(dateStr, timeStr) {
+      const localDate = new Date(`${dateStr}T${timeStr}:00`);
+      return localDate.toISOString();
+    }
 
-      const docSnap = await getDoc(doc(db, "polls", pollId));
-      if (!docSnap.exists()) {
-        qEl.textContent = "Aucune question pour aujourd'hui.";
-        return;
-      }
-
-      const data = docSnap.data();
+    function setDefaultTimes() {
       const now = new Date();
-      const start = new Date(data.startDateTime);
-      const end = new Date(data.endDateTime);
+      const start = new Date(now);
+      start.setDate(start.getDate() + 1);
+      start.setHours(6, 0, 0, 0);
 
-      if (data.site !== CURRENT_SITE) {
-        qEl.textContent = "Aucune question pour ce site.";
-        return;
-      }
+      const end = new Date(start);
+      end.setDate(start.getDate() + 1);
+      end.setHours(5, 59, 0, 0);
 
-      if (now < start) {
-        qEl.textContent = "Trop tôt. Débute à : " + start.toLocaleString('fr-FR');
-        return;
-      }
-
-      if (now >= end) {
-        qEl.textContent = "Trop tard. Fin à : " + end.toLocaleString('fr-FR');
-        return;
-      }
-
-      qEl.textContent = data.question;
-
-      if (await hasVoted(pollId)) {
-        oEl.style.display = "none";
-        bEl.style.display = "none";
-        listenToResults(pollId);
-      } else {
-        oEl.style.display = "block";
-        oEl.innerHTML = data.options.map((opt, idx) => `
-          <label style='display:block; margin-bottom: 8px;'>
-            <input type="radio" name="poll-choice" value="${idx}" style='margin-right: 8px;'>${opt}
-          </label>`).join("");
-        bEl.style.display = "block";
-      }
+      document.getElementById('dateDebut').value = start.toISOString().slice(0, 10);
+      document.getElementById('heureDebut').value = '06:00';
+      document.getElementById('dateFin').value = end.toISOString().slice(0, 10);
+      document.getElementById('heureFin').value = '05:59';
     }
 
-    async function submitVote() {
-      const selected = document.querySelector("input[name='poll-choice']:checked");
-      const aEl = document.getElementById("poll-alert");
-
-      const arcId = getArcIdUUID();
-      if (!arcId) {
-        aEl.innerHTML = `Vous devez être connecté pour répondre. <a href="/connexion" style="color: #d51D2C; text-decoration: underline;">Me connecter</a>`;
-        return;
-      }
-
-      if (!selected) {
-        aEl.textContent = "Veuillez choisir une option.";
-        return;
-      }
-
-      if (await hasVoted(pollId)) {
-        aEl.textContent = "Vous y avez déjà répondu.";
-        return;
-      }
-
-      const index = parseInt(selected.value);
+    async function loadPollFromSelection() {
+      const site = document.getElementById('site').value;
+      const date = document.getElementById('dateDebut').value;
+      const pollId = getPollId(site, date);
       const pollRef = doc(db, "polls", pollId);
-      const voteRef = doc(db, "votes", `${userId}_${pollId}`);
+      const snapshot = await getDoc(pollRef);
 
-      await runTransaction(db, async (t) => {
-        const pollDoc = await t.get(pollRef);
-        const data = pollDoc.data();
-        const votes = data.votes;
-        votes[index]++;
-        t.update(pollRef, { votes });
-        t.set(voteRef, {
-          userId,
-          date: pollId,
-          option: index,
-          ArcID: arcId
-        });
-        t.set(doc(db, "votes_by_arcid", `${arcId}_${pollId}`), {
-          arcId,
-          userId,
-          date: pollId,
-          option: index
-        });
-      });
+      const qField = document.getElementById('question');
+      const hDebut = document.getElementById('heureDebut');
+      const dFin = document.getElementById('dateFin');
+      const hFin = document.getElementById('heureFin');
+      const optionsContainer = document.getElementById('optionsContainer');
+      const message = document.getElementById('successMessage');
 
-      document.getElementById("submit-poll").style.display = "none";
-      document.getElementById("poll-options").style.display = "none";
-      aEl.textContent = "Merci pour votre réponse!";
-      listenToResults(pollId);
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        const start = fromUTCToLocalInput(data.startDateTime);
+        const end = fromUTCToLocalInput(data.endDateTime);
+        qField.value = data.question || '';
+        hDebut.value = start.time;
+        dFin.value = end.date;
+        hFin.value = end.time;
+        optionsContainer.innerHTML = '';
+        data.options.forEach((opt, idx) => {
+          optionsContainer.appendChild(createOptionInput(opt, idx >= 2));
+        });
+        const now = new Date();
+        const isOver = now >= new Date(data.endDateTime);
+        message.textContent = isOver
+          ? "Ce sondage est terminé. Vous pouvez le consulter, mais pas le modifier."
+          : "Sondage actif. Vous pouvez le modifier.";
+        document.querySelectorAll('#pollForm input, #pollForm textarea, #pollForm button, #pollForm select').forEach(el => {
+          el.disabled = isOver && el.id !== 'dateDebut' && el.id !== 'site';
+        });
+      } else {
+        qField.value = '';
+        qField.placeholder = 'Inscrivez votre question';
+        hDebut.value = '06:00';
+        const d = new Date(`${date}T06:00:00`);
+        const end = new Date(d);
+        end.setDate(d.getDate() + 1);
+        dFin.value = end.toISOString().slice(0, 10);
+        hFin.value = '05:59';
+        message.textContent = '';
+        document.querySelectorAll('#pollForm input, #pollForm textarea, #pollForm button, #pollForm select').forEach(el => {
+          el.disabled = false;
+        });
+        optionsContainer.innerHTML = '';
+        optionsContainer.appendChild(createOptionInput("", false));
+        optionsContainer.appendChild(createOptionInput("", false));
+      }
     }
 
-    function listenToResults(id) {
-      const rEl = document.getElementById("poll-results");
-      rEl.style.display = "block";
-      rEl.innerHTML = "<em>Chargement des résultats…</em>";
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('pollForm');
+      const optionsContainer = document.getElementById('optionsContainer');
 
-      onSnapshot(doc(db, "polls", id), docSnap => {
-        const data = docSnap.data();
-        const total = data.votes.reduce((a, b) => a + b, 0);
-        rEl.innerHTML = data.options.map((opt, idx) => {
-          const percent = total ? Math.round((data.votes[idx] / total) * 100) : 0;
-          return `<div style='margin-bottom: 10px;'>
-            <div style='display: flex; justify-content: space-between;'>
-              <span>${opt}</span><span><b>${percent}%</b></span>
-            </div>
-            <div style='background:#eee; border-radius:4px; height:6px; overflow:hidden;'>
-              <div style='width:${percent}%; height:6px; background:#d51D2C;'></div>
-            </div>
-          </div>`;
-        }).join("") + `<div style='margin-top: 8px; font-size: 14px;'>${total} répondant${total > 1 ? "s" : ""}</div>`;
+      setDefaultTimes();
+      optionsContainer.appendChild(createOptionInput("", false));
+      optionsContainer.appendChild(createOptionInput("", false));
+
+      new Sortable(optionsContainer, {
+        animation: 150,
+        handle: '.drag-handle',
+        ghostClass: 'dragging'
       });
-    }
 
-    document.getElementById("submit-poll").addEventListener("click", submitVote);
-    renderPoll();
+      document.getElementById('addOption').addEventListener('click', () => {
+        const inputs = optionsContainer.querySelectorAll('.option-input');
+        if (inputs.length < 8) {
+          optionsContainer.appendChild(createOptionInput());
+        }
+      });
+
+      document.getElementById('dateDebut').addEventListener('change', loadPollFromSelection);
+      document.getElementById('site').addEventListener('change', loadPollFromSelection);
+
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const site = document.getElementById('site').value;
+        const dateDebut = document.getElementById('dateDebut').value;
+        const heureDebut = document.getElementById('heureDebut').value;
+        const dateFin = document.getElementById('dateFin').value;
+        const heureFin = document.getElementById('heureFin').value;
+        const question = document.getElementById('question').value;
+
+        const options = Array.from(document.querySelectorAll('.option-input'))
+          .map(opt => opt.value.trim()).filter(Boolean);
+
+        if (options.length < 2) {
+          alert("Veuillez entrer au moins deux options.");
+          return;
+        }
+
+        const pollId = getPollId(site, dateDebut);
+        const pollRef = doc(db, "polls", pollId);
+        const startDateTime = toUTCStringFromLocal(dateDebut, heureDebut);
+        const endDateTime = toUTCStringFromLocal(dateFin, heureFin);
+
+        await setDoc(pollRef, {
+          question,
+          options,
+          site,
+          votes: Array(options.length).fill(0),
+          startDateTime,
+          endDateTime
+        });
+
+        document.getElementById('successMessage').textContent = `Sondage enregistré pour ${site} le ${dateDebut}`;
+      };
+    });
   </script>
+</head>
+<body>
+  <h1>Créer une question du jour</h1>
+  <form id="pollForm">
+    <label for="site">Site</label>
+    <select id="site" required>
+      <option value="lesoleil" selected>Le Soleil</option>
+      <option value="ledroit">Le Droit</option>
+      <option value="lenouvelliste">Le Nouvelliste</option>
+      <option value="lequotidien">Le Quotidien</option>
+      <option value="latribune">La Tribune</option>
+      <option value="lavoixdelest">La Voix de l'Est</option>
+    </select>
+    <div class="inline-inputs">
+      <div>
+        <label for="dateDebut">Date de début</label>
+        <input type="date" id="dateDebut" required>
+      </div>
+      <div>
+        <label for="heureDebut">Heure de début</label>
+        <input type="time" id="heureDebut" required>
+      </div>
+    </div>
+    <div class="inline-inputs">
+      <div>
+        <label for="dateFin">Date de fin</label>
+        <input type="date" id="dateFin" required>
+      </div>
+      <div>
+        <label for="heureFin">Heure de fin</label>
+        <input type="time" id="heureFin" required>
+      </div>
+    </div>
+    <label for="question">Question</label>
+    <textarea id="question" rows="2" required placeholder="Inscrivez votre question"></textarea>
+    <label>Options (2 à 8)</label>
+    <div id="optionsContainer"></div>
+    <button type="button" id="addOption">Ajouter une option</button>
+    <button type="submit">Créer / Mettre à jour</button>
+    <div class="message" id="successMessage"></div>
+  </form>
 </body>
 </html>
