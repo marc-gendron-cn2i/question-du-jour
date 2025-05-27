@@ -34,12 +34,19 @@
       border: 1px solid #ccc;
       border-radius: 6px;
       font-family: 'Red Hat Display', sans-serif;
+      box-sizing: border-box;
     }
     .option-row {
       display: flex;
-      gap: 0.5rem;
       align-items: center;
+      gap: 0.5rem;
       margin-bottom: 0.5rem;
+    }
+    .drag-handle {
+      cursor: grab;
+      font-size: 1.2rem;
+      color: #888;
+      padding: 0 0.25rem;
     }
     .option-input {
       flex: 1;
@@ -50,6 +57,7 @@
       font-size: 1.2rem;
       color: #d51D2C;
       cursor: pointer;
+      padding: 0 0.25rem;
     }
     button {
       margin-top: 1.5rem;
@@ -84,12 +92,13 @@
     const db = getFirestore(app);
 
     function toUTCStringFromLocal(dateStr, timeStr) {
-      return new Date(`${dateStr}T${timeStr}:00`).toISOString();
+      const local = new Date(`${dateStr}T${timeStr}`);
+      return new Date(local.getTime() - local.getTimezoneOffset() * 60000).toISOString();
     }
 
     function fromUTCToLocalInput(utcString) {
       const utcDate = new Date(utcString);
-      const local = new Date(utcDate.getTime() - utcDate.getTimezoneOffset() * 60000);
+      const local = new Date(utcDate.getTime() + utcDate.getTimezoneOffset() * 60000);
       return {
         date: local.toISOString().slice(0, 10),
         time: local.toTimeString().slice(0, 5)
@@ -100,6 +109,11 @@
       const row = document.createElement('div');
       row.className = 'option-row';
       row.setAttribute('draggable', true);
+
+      const dragIcon = document.createElement('span');
+      dragIcon.className = 'drag-handle';
+      dragIcon.textContent = '☰';
+      row.appendChild(dragIcon);
 
       const input = document.createElement('input');
       input.type = 'text';
@@ -139,7 +153,7 @@
 
       new Sortable(optionsContainer, {
         animation: 150,
-        handle: '.option-input',
+        handle: '.drag-handle',
         ghostClass: 'dragging'
       });
 
