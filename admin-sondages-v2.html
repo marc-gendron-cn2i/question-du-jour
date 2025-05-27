@@ -94,7 +94,6 @@
     function createOptionInput(value = "", removable = true) {
       const row = document.createElement('div');
       row.className = 'option-row';
-      row.setAttribute('draggable', true);
 
       const dragIcon = document.createElement('span');
       dragIcon.className = 'drag-handle';
@@ -122,12 +121,10 @@
 
     function fromUTCToLocalInput(utcString) {
       const local = new Date(utcString);
-      const yyyy = local.getFullYear();
-      const mm = String(local.getMonth() + 1).padStart(2, '0');
-      const dd = String(local.getDate()).padStart(2, '0');
-      const hours = String(local.getHours()).padStart(2, '0');
-      const minutes = String(local.getMinutes()).padStart(2, '0');
-      return { date: `${yyyy}-${mm}-${dd}`, time: `${hours}:${minutes}` };
+      return {
+        date: local.toISOString().slice(0, 10),
+        time: local.toTimeString().slice(0, 5)
+      };
     }
 
     function toUTCStringFromLocal(dateStr, timeStr) {
@@ -169,6 +166,7 @@
         const data = snapshot.data();
         const start = fromUTCToLocalInput(data.startDateTime);
         const end = fromUTCToLocalInput(data.endDateTime);
+
         qField.value = data.question || '';
         hDebut.value = start.time;
         dFin.value = end.date;
@@ -177,31 +175,58 @@
         data.options.forEach((opt, idx) => {
           optionsContainer.appendChild(createOptionInput(opt, idx >= 2));
         });
+
         const now = new Date();
         const isOver = now >= new Date(data.endDateTime);
         message.textContent = isOver
           ? "Ce sondage est terminé. Vous pouvez le consulter, mais pas le modifier."
           : "Sondage actif. Vous pouvez le modifier.";
+
         document.querySelectorAll('#pollForm input, #pollForm textarea, #pollForm button, #pollForm select').forEach(el => {
           el.disabled = isOver && el.id !== 'dateDebut' && el.id !== 'site';
         });
       } else {
+        setDefaultTimes();
         qField.value = '';
         qField.placeholder = 'Inscrivez votre question';
-        hDebut.value = '06:00';
-        const d = new Date(`${date}T06:00:00`);
-        const end = new Date(d);
-        end.setDate(d.getDate() + 1);
-        dFin.value = end.toISOString().slice(0, 10);
-        hFin.value = '05:59';
         message.textContent = '';
-        document.querySelectorAll('#pollForm input, #pollForm textarea, #pollForm button, #pollForm select').forEach(el => {
-          el.disabled = false;
-        });
+        document.querySelectorAll('#pollForm input, #pollForm textarea, #pollForm button, #pollForm select').forEach(el => el.disabled = false);
+        const optionsContainer = document.getElementById('optionsContainer');
         optionsContainer.innerHTML = '';
         optionsContainer.appendChild(createOptionInput("", false));
         optionsContainer.appendChild(createOptionInput("", false));
       }
+    }
+
+    async function confirmPreserveVotes() {
+      return new Promise((resolve) => {
+        const dialog = document.createElement('div');
+        dialog.style.background = '#fff';
+        dialog.style.border = '2px solid #d51D2C';
+        dialog.style.padding = '1rem';
+        dialog.style.borderRadius = '8px';
+        dialog.style.maxWidth = '500px';
+        dialog.style.margin = '2rem auto';
+        dialog.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+        dialog.innerHTML = `
+          <p style="font-weight: bold; color: #d51D2C;">Souhaitez-vous conserver les résultats existants ?</p>
+          <p>Appuyez sur <strong>Conserver</strong> pour préserver les réponses déjà soumises.</p>
+          <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+            <button id="preserveVotes">Conserver</button>
+            <button id="resetVotes">Réinitialiser</button>
+          </div>
+        `;
+        document.body.appendChild(dialog);
+
+        document.getElementById('preserveVotes').onclick = () => {
+          dialog.remove();
+          resolve(true);
+        };
+        document.getElementById('resetVotes').onclick = () => {
+          dialog.remove();
+          resolve(false);
+        };
+      });
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -247,19 +272,32 @@
 
         const pollId = getPollId(site, dateDebut);
         const pollRef = doc(db, "polls", pollId);
+        const existing = await getDoc(pollRef);
+
         const startDateTime = toUTCStringFromLocal(dateDebut, heureDebut);
         const endDateTime = toUTCStringFromLocal(dateFin, heureFin);
+
+        let votes = Array(options.length).fill(0);
+        if (existing.exists()) {
+          const preserve = await confirmPreserveVotes();
+          if (preserve) {
+            votes = existing.data().votes || votes;
+            document.getElementById('successMessage').textContent = "Sondage mis à jour. Les résultats ont été conservés.";
+          } else {
+            document.getElementById('successMessage').textContent = "Sondage mis à jour. Les résultats ont été remis à zéro.";
+          }
+        } else {
+          document.getElementById('successMessage').textContent = `Sondage enregistré pour ${site} le ${dateDebut}`;
+        }
 
         await setDoc(pollRef, {
           question,
           options,
           site,
-          votes: Array(options.length).fill(0),
+          votes,
           startDateTime,
           endDateTime
         });
-
-        document.getElementById('successMessage').textContent = `Sondage enregistré pour ${site} le ${dateDebut}`;
       };
     });
   </script>
@@ -276,6 +314,7 @@
       <option value="latribune">La Tribune</option>
       <option value="lavoixdelest">La Voix de l'Est</option>
     </select>
+
     <div class="inline-inputs">
       <div>
         <label for="dateDebut">Date de début</label>
@@ -286,6 +325,7 @@
         <input type="time" id="heureDebut" required>
       </div>
     </div>
+
     <div class="inline-inputs">
       <div>
         <label for="dateFin">Date de fin</label>
@@ -296,8 +336,10 @@
         <input type="time" id="heureFin" required>
       </div>
     </div>
+
     <label for="question">Question</label>
     <textarea id="question" rows="2" required placeholder="Inscrivez votre question"></textarea>
+
     <label>Options (2 à 8)</label>
     <div id="optionsContainer"></div>
     <button type="button" id="addOption">Ajouter une option</button>
