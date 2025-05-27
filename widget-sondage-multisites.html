@@ -37,14 +37,12 @@
     <div id="poll-options"></div>
     <button id="submit-poll" style="display:none;">Soumettre</button>
     <div id="poll-results" style="display:none;"></div>
-    <div id="poll-alert"></div>
+    <div id="poll-alert" style="margin-top: 1rem; color: #d51D2C;"></div>
   </div>
 
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js';
     import { getFirestore, doc, getDoc, runTransaction, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js';
-
-    console.log("🧪 Script chargé");
 
     const firebaseConfig = {
       apiKey: "AIzaSyDMJGl7E0O_Q2Tj7GPRM0XQTyJ4N6Wph2A",
@@ -59,14 +57,15 @@
     const db = getFirestore(app);
 
     const CURRENT_SITE = "lesoleil";
-    const local = new Date().toLocaleString('en-CA', { timeZone: 'America/Toronto' });
-    const pollId = local.split(',')[0]; // ex : 2025-05-26
-
+    const localDate = new Date().toLocaleString('en-CA', { timeZone: 'America/Toronto' }).split(',')[0];
+    const pollId = localDate;
     const userId = localStorage.getItem("pollUserId") || (() => {
       const uid = crypto.randomUUID();
       localStorage.setItem("pollUserId", uid);
       return uid;
     })();
+
+    let pollData = null;
 
     async function hasVoted(date) {
       const voteSnap = await getDoc(doc(db, "votes", `${userId}_${date}`));
@@ -74,12 +73,9 @@
     }
 
     async function renderPoll() {
-      console.log("🔁 renderPoll exécuté");
-
       const qEl = document.getElementById("poll-question");
       const oEl = document.getElementById("poll-options");
       const bEl = document.getElementById("submit-poll");
-      const rEl = document.getElementById("poll-results");
       const aEl = document.getElementById("poll-alert");
 
       const docSnap = await getDoc(doc(db, "polls", pollId));
@@ -88,19 +84,12 @@
         return;
       }
 
-      const data = docSnap.data();
+      pollData = docSnap.data();
       const now = new Date();
-      const start = new Date(data.startDateTime);
-      const end = new Date(data.endDateTime);
+      const start = new Date(pollData.startDateTime);
+      const end = new Date(pollData.endDateTime);
 
-      console.log("UTC now       :", now.toISOString());
-      console.log("Start (UTC)   :", start.toISOString());
-      console.log("End   (UTC)   :", end.toISOString());
-      console.log("Site attendu  :", CURRENT_SITE);
-      console.log("Site sondage  :", data.site);
-      console.log("Poll ID utilisé :", pollId);
-
-      if (data.site !== CURRENT_SITE) {
+      if (pollData.site !== CURRENT_SITE) {
         qEl.textContent = "Aucune question pour ce site.";
         return;
       }
@@ -115,24 +104,77 @@
         return;
       }
 
-      qEl.textContent = data.question;
-      oEl.innerHTML = data.options.map((opt, idx) => `
+      qEl.textContent = pollData.question;
+      oEl.innerHTML = pollData.options.map((opt, idx) => `
         <label style='display:block; margin-bottom: 8px;'>
           <input type="radio" name="poll-choice" value="${idx}" style='margin-right: 8px;'>${opt}
         </label>`).join("");
-      bEl.style.display = "block";
 
       if (await hasVoted(pollId)) {
         qEl.textContent += " (vous avez déjà voté)";
         oEl.style.display = "none";
         bEl.style.display = "none";
+        listenToResults();
+      } else {
+        bEl.style.display = "block";
       }
     }
 
-    document.getElementById("submit-poll").addEventListener("click", () => {
-      console.log("🗳️ Vote soumis (simulé)");
-    });
+    async function submitVote() {
+      const selected = document.querySelector("input[name='poll-choice']:checked");
+      const aEl = document.getElementById("poll-alert");
 
+      if (!selected) {
+        aEl.textContent = "Veuillez choisir une option.";
+        return;
+      }
+
+      const index = parseInt(selected.value);
+      const pollRef = doc(db, "polls", pollId);
+      const voteRef = doc(db, "votes", `${userId}_${pollId}`);
+
+      await runTransaction(db, async (t) => {
+        const pollDoc = await t.get(pollRef);
+        const data = pollDoc.data();
+        const votes = data.votes;
+        votes[index]++;
+        t.update(pollRef, { votes });
+        t.set(voteRef, {
+          userId,
+          date: pollId,
+          option: index
+        });
+      });
+
+      document.getElementById("submit-poll").style.display = "none";
+      document.getElementById("poll-options").style.display = "none";
+      document.getElementById("poll-alert").textContent = "Merci pour votre vote!";
+      listenToResults();
+    }
+
+    function listenToResults() {
+      const rEl = document.getElementById("poll-results");
+      rEl.style.display = "block";
+      rEl.innerHTML = "<em>Chargement des résultats…</em>";
+
+      onSnapshot(doc(db, "polls", pollId), docSnap => {
+        const data = docSnap.data();
+        const total = data.votes.reduce((a, b) => a + b, 0);
+        rEl.innerHTML = data.options.map((opt, idx) => {
+          const percent = total ? Math.round((data.votes[idx] / total) * 100) : 0;
+          return `<div style='margin-bottom: 10px;'>
+            <div style='display: flex; justify-content: space-between;'>
+              <span>${opt}</span><span><b>${percent}%</b></span>
+            </div>
+            <div style='background:#eee; border-radius:4px; height:6px; overflow:hidden;'>
+              <div style='width:${percent}%; height:6px; background:#d51D2C;'></div>
+            </div>
+          </div>`;
+        }).join("") + `<div style='margin-top: 8px; font-size: 14px;'>${total} répondant${total > 1 ? "s" : ""}</div>`;
+      });
+    }
+
+    document.getElementById("submit-poll").addEventListener("click", submitVote);
     renderPoll();
   </script>
 </body>
