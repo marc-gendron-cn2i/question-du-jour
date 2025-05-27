@@ -23,6 +23,7 @@
     .inline-inputs {
       display: flex;
       gap: 1rem;
+      margin-bottom: 1rem;
     }
     .inline-inputs > div {
       flex: 1;
@@ -34,8 +35,21 @@
       border-radius: 6px;
       font-family: 'Red Hat Display', sans-serif;
     }
-    .option-input {
+    .option-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
       margin-bottom: 0.5rem;
+    }
+    .option-input {
+      flex: 1;
+    }
+    .remove-option {
+      background: transparent;
+      border: none;
+      font-size: 1.2rem;
+      color: #d51D2C;
+      cursor: pointer;
     }
     button {
       margin-top: 1.5rem;
@@ -53,6 +67,7 @@
     }
   </style>
   <script type="module">
+    import Sortable from "https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/+esm";
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
     import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
@@ -81,31 +96,51 @@
       };
     }
 
+    function createOptionInput(value = "", removable = true) {
+      const row = document.createElement('div');
+      row.className = 'option-row';
+      row.setAttribute('draggable', true);
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = 'Option';
+      input.className = 'option-input';
+      input.required = true;
+      input.value = value;
+
+      row.appendChild(input);
+
+      if (removable) {
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-option';
+        removeBtn.innerHTML = '&times;';
+        removeBtn.onclick = () => row.remove();
+        row.appendChild(removeBtn);
+      }
+
+      return row;
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       const form = document.getElementById('pollForm');
       const optionsContainer = document.getElementById('optionsContainer');
       const addOptionButton = document.getElementById('addOption');
       const message = document.getElementById('successMessage');
 
-      for (let i = 0; i < 2; i++) {
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.placeholder = `Option ${i + 1}`;
-        input.className = 'option-input';
-        input.required = true;
-        optionsContainer.appendChild(input);
-      }
+      optionsContainer.appendChild(createOptionInput("", false));
+      optionsContainer.appendChild(createOptionInput("", false));
 
       addOptionButton.addEventListener('click', () => {
         const currentInputs = optionsContainer.querySelectorAll('input.option-input');
         if (currentInputs.length < 8) {
-          const input = document.createElement('input');
-          input.type = 'text';
-          input.placeholder = `Option ${currentInputs.length + 1}`;
-          input.className = 'option-input';
-          input.required = true;
-          optionsContainer.appendChild(input);
+          optionsContainer.appendChild(createOptionInput());
         }
+      });
+
+      new Sortable(optionsContainer, {
+        animation: 150,
+        handle: '.option-input',
+        ghostClass: 'dragging'
       });
 
       document.getElementById('dateDebut').addEventListener('change', async () => {
@@ -126,24 +161,12 @@
 
           optionsContainer.innerHTML = '';
           data.options.forEach((opt, idx) => {
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'option-input';
-            input.placeholder = `Option ${idx + 1}`;
-            input.required = true;
-            input.value = opt;
-            optionsContainer.appendChild(input);
+            optionsContainer.appendChild(createOptionInput(opt, idx >= 2));
           });
         } else {
           optionsContainer.innerHTML = '';
-          for (let i = 0; i < 2; i++) {
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.placeholder = `Option ${i + 1}`;
-            input.className = 'option-input';
-            input.required = true;
-            optionsContainer.appendChild(input);
-          }
+          optionsContainer.appendChild(createOptionInput("", false));
+          optionsContainer.appendChild(createOptionInput("", false));
         }
       });
 
