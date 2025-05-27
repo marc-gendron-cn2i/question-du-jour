@@ -22,14 +22,19 @@
       cursor: pointer;
       margin-top: 1rem;
     }
-    #poll-alert {
+    select {
       margin-top: 1rem;
-      color: #d51D2C;
-      font-size: 15px;
+      padding: 6px;
+      font-size: 14px;
+      width: 100%;
     }
-    #poll-alert a {
+    .back-link {
+      margin-top: 1rem;
+      display: inline-block;
       color: #d51D2C;
+      font-size: 14px;
       text-decoration: underline;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -45,12 +50,12 @@
     <div id="poll-options"></div>
     <button id="submit-poll" style="display:none;">Soumettre</button>
     <div id="poll-results" style="display:none;"></div>
-    <div id="poll-alert"></div>
+    <div id="poll-alert" style="margin-top: 1rem; color: #d51D2C;"></div>
   </div>
 
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js';
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, runTransaction, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js';
+    import { getFirestore, doc, getDoc, setDoc, runTransaction, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js';
 
     const firebaseConfig = {
       apiKey: "AIzaSyDMJGl7E0O_Q2Tj7GPRM0XQTyJ4N6Wph2A",
@@ -77,9 +82,10 @@
       }
     }
 
-    async function hasVoted(arcId, date) {
-      const voteSnap = await getDoc(doc(db, "votes_by_arcid", `${arcId}_${date}`));
-      return voteSnap.exists();
+    async function hasVoted(date, arcId) {
+      if (!arcId) return false;
+      const snap = await getDoc(doc(db, "votes_by_arcid", `${arcId}_${date}`));
+      return snap.exists();
     }
 
     async function renderPoll() {
@@ -89,12 +95,13 @@
       const aEl = document.getElementById("poll-alert");
       const rEl = document.getElementById("poll-results");
 
-      qEl.innerHTML = "";
+      qEl.textContent = "Chargement…";
       oEl.innerHTML = "";
       aEl.textContent = "";
       rEl.innerHTML = "";
       rEl.style.display = "none";
 
+      const arcId = getArcIdUUID();
       const docSnap = await getDoc(doc(db, "polls", pollId));
       if (!docSnap.exists()) {
         qEl.textContent = "Aucune question pour aujourd'hui.";
@@ -123,60 +130,58 @@
 
       qEl.textContent = data.question;
 
-      const arcId = getArcIdUUID();
       if (!arcId) {
-        bEl.style.display = "block";
+        aEl.innerHTML = `Veuillez <a href="/connexion" style="color:#d51D2C; text-decoration:underline;">vous connecter</a> pour voter.`;
+        return;
+      }
+
+      if (await hasVoted(pollId, arcId)) {
+        listenToResults(pollId);
+      } else {
         oEl.innerHTML = data.options.map((opt, idx) => `
           <label style='display:block; margin-bottom: 8px;'>
             <input type="radio" name="poll-choice" value="${idx}" style='margin-right: 8px;'>${opt}
           </label>`).join("");
-        bEl.onclick = () => {
-          aEl.innerHTML = `Vous devez être connecté pour voter. <a href="/connexion">Me connecter</a>`;
-        };
+        bEl.style.display = "block";
+      }
+    }
+
+    async function submitVote() {
+      const arcId = getArcIdUUID();
+      const selected = document.querySelector("input[name='poll-choice']:checked");
+      const aEl = document.getElementById("poll-alert");
+
+      if (!arcId) {
+        aEl.innerHTML = `Veuillez <a href="/connexion" style="color:#d51D2C; text-decoration:underline;">vous connecter</a> pour voter.`;
         return;
       }
 
-      if (await hasVoted(arcId, pollId)) {
-        listenToResults(pollId);
+      if (!selected) {
+        aEl.textContent = "Veuillez choisir une option.";
         return;
       }
 
-      oEl.style.display = "block";
-      oEl.innerHTML = data.options.map((opt, idx) => `
-        <label style='display:block; margin-bottom: 8px;'>
-          <input type="radio" name="poll-choice" value="${idx}" style='margin-right: 8px;'>${opt}
-        </label>`).join("");
-      bEl.style.display = "block";
+      const index = parseInt(selected.value);
+      const pollRef = doc(db, "polls", pollId);
+      const voteRef = doc(db, "votes_by_arcid", `${arcId}_${pollId}`);
 
-      bEl.onclick = async () => {
-        const selected = document.querySelector("input[name='poll-choice']:checked");
-        if (!selected) {
-          aEl.textContent = "Veuillez choisir une option.";
-          return;
-        }
-
-        const index = parseInt(selected.value);
-        const pollRef = doc(db, "polls", pollId);
-        const voteRef = doc(db, "votes_by_arcid", `${arcId}_${pollId}`);
-
-        await runTransaction(db, async (t) => {
-          const pollDoc = await t.get(pollRef);
-          const data = pollDoc.data();
-          const votes = data.votes;
-          votes[index]++;
-          t.update(pollRef, { votes });
-          t.set(voteRef, {
-            arcId,
-            date: pollId,
-            option: index
-          });
+      await runTransaction(db, async (t) => {
+        const pollDoc = await t.get(pollRef);
+        const data = pollDoc.data();
+        const votes = data.votes;
+        votes[index]++;
+        t.update(pollRef, { votes });
+        t.set(voteRef, {
+          arcId,
+          date: pollId,
+          option: index
         });
+      });
 
-        oEl.style.display = "none";
-        bEl.style.display = "none";
-        aEl.textContent = "Merci pour votre vote!";
-        listenToResults(pollId);
-      };
+      document.getElementById("submit-poll").style.display = "none";
+      document.getElementById("poll-options").style.display = "none";
+      document.getElementById("poll-alert").textContent = "Merci pour votre vote!";
+      listenToResults(pollId);
     }
 
     function listenToResults(id) {
@@ -198,9 +203,71 @@
             </div>
           </div>`;
         }).join("") + `<div style='margin-top: 8px; font-size: 14px;'>${total} répondant${total > 1 ? "s" : ""}</div>`;
+        addPreviousQuestionsDropdown();
       });
     }
 
+    async function addPreviousQuestionsDropdown() {
+      const rEl = document.getElementById("poll-results");
+      if (document.getElementById("previous-poll-dropdown")) return;
+
+      const dropdown = document.createElement("select");
+      dropdown.id = "previous-poll-dropdown";
+      dropdown.innerHTML = `<option value="">Voir un sondage précédent…</option>`;
+
+      const today = new Date();
+      const dates = Array.from({ length: 20 }, (_, i) => {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        return d.toISOString().split("T")[0];
+      });
+
+      for (const date of dates) {
+        const snap = await getDoc(doc(db, "polls", date));
+        if (!snap.exists()) continue;
+        const data = snap.data();
+        if (data.site !== CURRENT_SITE) continue;
+
+        const option = document.createElement("option");
+        option.value = date;
+        option.textContent = `${data.question} — ${new Date(data.startDateTime).toLocaleDateString("fr-FR")}`;
+        dropdown.appendChild(option);
+      }
+
+      dropdown.onchange = async function () {
+        const date = this.value;
+        if (!date) return;
+        const snap = await getDoc(doc(db, "polls", date));
+        if (!snap.exists()) return;
+        const data = snap.data();
+        const total = data.votes.reduce((a, b) => a + b, 0);
+
+        document.getElementById("poll-question").textContent = data.question;
+        document.getElementById("poll-options").style.display = "none";
+        document.getElementById("submit-poll").style.display = "none";
+        rEl.innerHTML = data.options.map((opt, idx) => {
+          const percent = total ? Math.round((data.votes[idx] / total) * 100) : 0;
+          return `<div style='margin-bottom: 10px;'>
+            <div style='display: flex; justify-content: space-between;'>
+              <span>${opt}</span><span><b>${percent}%</b></span>
+            </div>
+            <div style='background:#eee; border-radius:4px; height:6px; overflow:hidden;'>
+              <div style='width:${percent}%; height:6px; background:#d51D2C;'></div>
+            </div>
+          </div>`;
+        }).join("") + `<div style='margin-top: 8px; font-size: 14px;'>${total} répondant${total > 1 ? "s" : ""}</div>`;
+
+        const backBtn = document.createElement("div");
+        backBtn.className = "back-link";
+        backBtn.textContent = "← Revenir à la question du jour";
+        backBtn.onclick = () => renderPoll();
+        rEl.appendChild(backBtn);
+      };
+
+      rEl.appendChild(dropdown);
+    }
+
+    document.getElementById("submit-poll").addEventListener("click", submitVote);
     renderPoll();
   </script>
 </body>
