@@ -62,11 +62,8 @@
     const db = getFirestore(app);
 
     function toUTCStringFromLocal(dateStr, timeStr) {
-      const [year, month, day] = dateStr.split("-").map(Number);
-      const [hour, minute] = timeStr.split(":" ).map(Number);
-      const localDate = new Date(year, month - 1, day, hour, minute);
-      return new Date(localDate.getTime() - localDate.getTimezoneOffset() * 60000).toISOString();
-    }
+  return new Date(`${dateStr}T${timeStr}:00`).toISOString();
+}
 
     function fromUTCToLocalInput(utcString) {
       const utcDate = new Date(utcString);
