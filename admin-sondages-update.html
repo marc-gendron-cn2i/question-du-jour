@@ -57,7 +57,7 @@
     }
     .flex-col {
       flex: 1 1 45%;
-      margin-bottom: 1rem; /* ✅ Ajout de l'espacement sous chaque champ */
+      margin-bottom: 1rem;
     }
   </style>
 
@@ -121,7 +121,29 @@
       });
     }
 
+    function setDefaultDates() {
+      const now = new Date();
+
+      const dateDebut = new Date(now);
+      dateDebut.setDate(now.getDate() + 1);
+      dateDebut.setHours(6, 0, 0, 0);
+
+      const dateFin = new Date(now);
+      dateFin.setDate(now.getDate() + 2);
+      dateFin.setHours(6, 0, 0, 0);
+
+      const toDateInput = d => d.toISOString().slice(0, 10);
+      const toTimeInput = d => d.toTimeString().slice(0, 5);
+
+      document.getElementById('dateDebut').value = toDateInput(dateDebut);
+      document.getElementById('heureDebut').value = toTimeInput(dateDebut);
+      document.getElementById('dateFin').value = toDateInput(dateFin);
+      document.getElementById('heureFin').value = toTimeInput(dateFin);
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+      setDefaultDates();
+
       const form = document.getElementById('pollForm');
       const message = document.getElementById('successMessage');
       const optionsContainer = document.getElementById('optionsContainer');
@@ -221,11 +243,6 @@
         const dateFin = document.getElementById('dateFin').value;
         const heureFin = document.getElementById('heureFin').value;
 
-        if (!dateDebut || !heureDebut || !dateFin || !heureFin) {
-          alert("Veuillez remplir toutes les dates et heures.");
-          return;
-        }
-
         const startDateTime = new Date(`${dateDebut}T${heureDebut}:00`);
         const endDateTime = new Date(`${dateFin}T${heureFin}:00`);
 
@@ -235,7 +252,7 @@
         }
 
         const question = document.getElementById('question').value;
-        const options = Array.from(optionsContainer.querySelectorAll('input.option-input'))
+        const options = Array.from(document.querySelectorAll('.option-input'))
           .map(opt => opt.value.trim())
           .filter(Boolean);
 
@@ -254,6 +271,7 @@
         });
 
         form.reset();
+        setDefaultDates();
         document.getElementById('startDateTimePreview').textContent = '';
         document.getElementById('endDateTimePreview').textContent = '';
         optionsContainer.innerHTML = '';
@@ -283,7 +301,7 @@
       </div>
       <div class="flex-col">
         <label for="heureDebut">Heure de début</label>
-        <input type="time" id="heureDebut" required value="00:00">
+        <input type="time" id="heureDebut" required>
       </div>
     </div>
     <small id="startDateTimePreview"></small>
@@ -295,7 +313,7 @@
       </div>
       <div class="flex-col">
         <label for="heureFin">Heure de fin</label>
-        <input type="time" id="heureFin" required value="23:59">
+        <input type="time" id="heureFin" required>
       </div>
     </div>
     <small id="endDateTimePreview"></small>
