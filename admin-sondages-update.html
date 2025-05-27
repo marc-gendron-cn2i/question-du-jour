@@ -97,7 +97,7 @@
     }
 
     function fromUTCToLocalInput(utcString) {
-      const local = new Date(utcString); // pas de conversion manuelle
+      const local = new Date(utcString);
       const yyyy = local.getFullYear();
       const mm = String(local.getMonth() + 1).padStart(2, '0');
       const dd = String(local.getDate()).padStart(2, '0');
@@ -139,11 +139,29 @@
       return row;
     }
 
+    function setDefaultTimes() {
+      const now = new Date();
+      const start = new Date(now);
+      start.setDate(start.getDate() + 1);
+      start.setHours(6, 0, 0, 0);
+
+      const end = new Date(start);
+      end.setDate(start.getDate() + 1);
+      end.setHours(5, 59, 0, 0);
+
+      document.getElementById('dateDebut').value = start.toISOString().slice(0, 10);
+      document.getElementById('heureDebut').value = '06:00';
+      document.getElementById('dateFin').value = end.toISOString().slice(0, 10);
+      document.getElementById('heureFin').value = '05:59';
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       const form = document.getElementById('pollForm');
       const optionsContainer = document.getElementById('optionsContainer');
       const addOptionButton = document.getElementById('addOption');
       const message = document.getElementById('successMessage');
+
+      setDefaultTimes(); // Valeurs par défaut à l'ouverture
 
       optionsContainer.appendChild(createOptionInput("", false));
       optionsContainer.appendChild(createOptionInput("", false));
@@ -165,6 +183,13 @@
         const dateDebut = document.getElementById('dateDebut').value;
         const pollRef = doc(db, "polls", dateDebut);
         const snapshot = await getDoc(pollRef);
+
+        const d = new Date(`${dateDebut}T06:00:00`);
+        const end = new Date(d);
+        end.setDate(d.getDate() + 1);
+        document.getElementById('heureDebut').value = '06:00';
+        document.getElementById('dateFin').value = end.toISOString().slice(0, 10);
+        document.getElementById('heureFin').value = '05:59';
 
         if (snapshot.exists()) {
           const data = snapshot.data();
@@ -218,6 +243,7 @@
 
         message.textContent = `Sondage enregistré pour le ${dateDebut}`;
         form.reset();
+        setDefaultTimes();
       };
     });
   </script>
