@@ -12,9 +12,7 @@
       padding: 1rem;
       background: #f8f8f8;
     }
-    h1 {
-      color: #d51D2C;
-    }
+    h1 { color: #d51D2C; }
     label {
       display: block;
       margin-top: 1rem;
@@ -27,9 +25,7 @@
       border-radius: 6px;
       font-family: 'Red Hat Display', sans-serif;
     }
-    .option-input {
-      margin-bottom: 0.5rem;
-    }
+    .option-input { margin-bottom: 0.5rem; }
     button {
       margin-top: 1.5rem;
       background: #d51D2C;
@@ -60,6 +56,7 @@
       margin-bottom: 1rem;
     }
   </style>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
     import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
@@ -88,11 +85,6 @@
         minute: '2-digit',
         second: '2-digit'
       });
-    }
-
-    function getLocalPollId() {
-      const local = new Date().toLocaleString('en-CA', { timeZone: 'America/Toronto' });
-      return local.split(',')[0];
     }
 
     function updateDateTimePreviews() {
@@ -127,18 +119,14 @@
 
     function setDefaultDates() {
       const now = new Date();
-
       const dateDebut = new Date(now);
       dateDebut.setDate(now.getDate() + 1);
       dateDebut.setHours(6, 0, 0, 0);
-
       const dateFin = new Date(now);
       dateFin.setDate(now.getDate() + 2);
       dateFin.setHours(5, 59, 0, 0);
-
       const toDateInput = d => d.toISOString().slice(0, 10);
       const toTimeInput = d => d.toTimeString().slice(0, 5);
-
       document.getElementById('dateDebut').value = toDateInput(dateDebut);
       document.getElementById('heureDebut').value = toTimeInput(dateDebut);
       document.getElementById('dateFin').value = toDateInput(dateFin);
@@ -188,19 +176,17 @@
       });
 
       document.getElementById('dateDebut').addEventListener('change', async () => {
-        const pollId = getLocalPollId();
+        const pollId = document.getElementById('dateDebut').value;
         const pollRef = doc(db, "polls", pollId);
         const snapshot = await getDoc(pollRef);
 
         if (snapshot.exists()) {
           const data = snapshot.data();
-
           document.getElementById('question').value = data.question || '';
           document.getElementById('site').value = data.site || '';
           document.getElementById('dateFin').value = data.endDateTime?.substring(0, 10) || '';
           document.getElementById('heureDebut').value = data.startDateTime?.substring(11, 16) || '06:00';
           document.getElementById('heureFin').value = data.endDateTime?.substring(11, 16) || '05:59';
-
           optionsContainer.innerHTML = '';
           data.options.forEach((opt, idx) => {
             const input = document.createElement('input');
@@ -241,7 +227,7 @@
       form.onsubmit = async (e) => {
         e.preventDefault();
 
-        const pollId = getLocalPollId();
+        const pollId = document.getElementById('dateDebut').value;
         const pollRef = doc(db, "polls", pollId);
 
         const dateDebut = document.getElementById('dateDebut').value;
