@@ -72,6 +72,7 @@
     .message {
       margin-top: 1rem;
       font-weight: 600;
+      color: #d51D2C;
     }
   </style>
   <script type="module">
@@ -161,7 +162,7 @@
       const addOptionButton = document.getElementById('addOption');
       const message = document.getElementById('successMessage');
 
-      setDefaultTimes(); // Valeurs par défaut à l'ouverture
+      setDefaultTimes();
 
       optionsContainer.appendChild(createOptionInput("", false));
       optionsContainer.appendChild(createOptionInput("", false));
@@ -193,20 +194,36 @@
 
         if (snapshot.exists()) {
           const data = snapshot.data();
+          const now = new Date();
+          const isOver = now >= new Date(data.endDateTime);
+
           const start = fromUTCToLocalInput(data.startDateTime);
-          const end = fromUTCToLocalInput(data.endDateTime);
+          const fin = fromUTCToLocalInput(data.endDateTime);
 
           document.getElementById('dateDebut').value = start.date;
           document.getElementById('heureDebut').value = start.time;
-          document.getElementById('dateFin').value = end.date;
-          document.getElementById('heureFin').value = end.time;
+          document.getElementById('dateFin').value = fin.date;
+          document.getElementById('heureFin').value = fin.time;
           document.getElementById('question').value = data.question || '';
 
           optionsContainer.innerHTML = '';
           data.options.forEach((opt, idx) => {
             optionsContainer.appendChild(createOptionInput(opt, idx >= 2));
           });
+
+          if (isOver) {
+            document.querySelectorAll('#pollForm input, #pollForm textarea, #pollForm button').forEach(el => {
+              if (el.id !== 'dateDebut') el.disabled = true;
+            });
+            message.textContent = "Ce sondage est terminé. Vous pouvez le consulter, mais pas le modifier.";
+          } else {
+            message.textContent = "Sondage actif. Vous pouvez le modifier.";
+          }
         } else {
+          message.textContent = "";
+          document.querySelectorAll('#pollForm input, #pollForm textarea, #pollForm button').forEach(el => {
+            el.disabled = false;
+          });
           optionsContainer.innerHTML = '';
           optionsContainer.appendChild(createOptionInput("", false));
           optionsContainer.appendChild(createOptionInput("", false));
