@@ -11,7 +11,6 @@
       max-width: 600px;
       margin: 2rem auto;
       padding: 1.5rem;
-      font-family: 'Red Hat Display', sans-serif;
     }
     #submit-poll {
       background: #d51D2C;
@@ -22,6 +21,20 @@
       border-radius: 6px;
       cursor: pointer;
       margin-top: 1rem;
+    }
+    select {
+      margin-top: 1rem;
+      padding: 6px;
+      font-size: 14px;
+      width: 100%;
+    }
+    .back-link {
+      margin-top: 1rem;
+      display: inline-block;
+      color: #d51D2C;
+      font-size: 14px;
+      text-decoration: underline;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -77,6 +90,9 @@
       const oEl = document.getElementById("poll-options");
       const bEl = document.getElementById("submit-poll");
       const aEl = document.getElementById("poll-alert");
+      const rEl = document.getElementById("poll-results");
+      rEl.innerHTML = "";
+      rEl.style.display = "none";
 
       const docSnap = await getDoc(doc(db, "polls", pollId));
       if (!docSnap.exists()) {
@@ -111,10 +127,10 @@
         </label>`).join("");
 
       if (await hasVoted(pollId)) {
-        qEl.textContent += " (vous avez déjà voté)";
+        qEl.textContent += " (Vous y avez déjà répondu)";
         oEl.style.display = "none";
         bEl.style.display = "none";
-        listenToResults();
+        listenToResults(pollId);
       } else {
         bEl.style.display = "block";
       }
@@ -149,15 +165,15 @@
       document.getElementById("submit-poll").style.display = "none";
       document.getElementById("poll-options").style.display = "none";
       document.getElementById("poll-alert").textContent = "Merci pour votre vote!";
-      listenToResults();
+      listenToResults(pollId);
     }
 
-    function listenToResults() {
+    function listenToResults(id) {
       const rEl = document.getElementById("poll-results");
       rEl.style.display = "block";
       rEl.innerHTML = "<em>Chargement des résultats…</em>";
 
-      onSnapshot(doc(db, "polls", pollId), docSnap => {
+      onSnapshot(doc(db, "polls", id), docSnap => {
         const data = docSnap.data();
         const total = data.votes.reduce((a, b) => a + b, 0);
         rEl.innerHTML = data.options.map((opt, idx) => {
@@ -171,7 +187,74 @@
             </div>
           </div>`;
         }).join("") + `<div style='margin-top: 8px; font-size: 14px;'>${total} répondant${total > 1 ? "s" : ""}</div>`;
+
+        addPreviousQuestionsDropdown();
       });
+    }
+
+    async function addPreviousQuestionsDropdown() {
+      const rEl = document.getElementById("poll-results");
+      const dropdown = document.createElement("select");
+      dropdown.innerHTML = `<option value="">Voir un sondage précédent…</option>`;
+
+      const today = new Date();
+      const dates = Array.from({ length: 20 }, (_, i) => {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        return d.toISOString().split("T")[0];
+      });
+
+      for (const date of dates) {
+        const docSnap = await getDoc(doc(db, "polls", date));
+        if (!docSnap.exists()) continue;
+        const data = docSnap.data();
+        if (data.site !== CURRENT_SITE) continue;
+
+        const option = document.createElement("option");
+        const label = `${data.question} — ${new Date(data.startDateTime).toLocaleDateString("fr-FR")}`;
+        option.value = date;
+        option.textContent = label;
+        dropdown.appendChild(option);
+      }
+
+      dropdown.onchange = async function () {
+        const selectedDate = this.value;
+        if (!selectedDate) return;
+        const snap = await getDoc(doc(db, "polls", selectedDate));
+        if (!snap.exists()) return;
+        const data = snap.data();
+        const total = data.votes.reduce((a, b) => a + b, 0);
+        const qEl = document.getElementById("poll-question");
+        qEl.textContent = data.question;
+
+        const oEl = document.getElementById("poll-options");
+        const bEl = document.getElementById("submit-poll");
+        oEl.style.display = "none";
+        bEl.style.display = "none";
+
+        const rEl = document.getElementById("poll-results");
+        rEl.innerHTML = data.options.map((opt, idx) => {
+          const percent = total ? Math.round((data.votes[idx] / total) * 100) : 0;
+          return `<div style='margin-bottom: 10px;'>
+            <div style='display: flex; justify-content: space-between;'>
+              <span>${opt}</span><span><b>${percent}%</b></span>
+            </div>
+            <div style='background:#eee; border-radius:4px; height:6px; overflow:hidden;'>
+              <div style='width:${percent}%; height:6px; background:#d51D2C;'></div>
+            </div>
+          </div>`;
+        }).join("") + `<div style='margin-top: 8px; font-size: 14px;'>${total} répondant${total > 1 ? "s" : ""}</div>`;
+
+        const backBtn = document.createElement("div");
+        backBtn.className = "back-link";
+        backBtn.textContent = "← Revenir à la question du jour";
+        backBtn.onclick = () => {
+          renderPoll();
+        };
+        rEl.appendChild(backBtn);
+      };
+
+      rEl.appendChild(dropdown);
     }
 
     document.getElementById("submit-poll").addEventListener("click", submitVote);
