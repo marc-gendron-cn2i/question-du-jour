@@ -91,6 +91,9 @@
       const bEl = document.getElementById("submit-poll");
       const aEl = document.getElementById("poll-alert");
       const rEl = document.getElementById("poll-results");
+      qEl.innerHTML = "";
+      oEl.innerHTML = "";
+      aEl.textContent = "";
       rEl.innerHTML = "";
       rEl.style.display = "none";
 
@@ -121,17 +124,25 @@
       }
 
       qEl.textContent = pollData.question;
-      oEl.innerHTML = pollData.options.map((opt, idx) => `
-        <label style='display:block; margin-bottom: 8px;'>
-          <input type="radio" name="poll-choice" value="${idx}" style='margin-right: 8px;'>${opt}
-        </label>`).join("");
+      const hasUserVoted = await hasVoted(pollId);
 
-      if (await hasVoted(pollId)) {
-        qEl.textContent += " (Vous y avez déjà répondu)";
+      if (hasUserVoted) {
+        const votedNote = document.createElement("div");
+        votedNote.textContent = "Vous y avez déjà répondu";
+        votedNote.style.fontWeight = "normal";
+        votedNote.style.fontSize = "15px";
+        votedNote.style.marginTop = "4px";
+        qEl.appendChild(votedNote);
+
         oEl.style.display = "none";
         bEl.style.display = "none";
         listenToResults(pollId);
       } else {
+        oEl.style.display = "block";
+        oEl.innerHTML = pollData.options.map((opt, idx) => `
+          <label style='display:block; margin-bottom: 8px;'>
+            <input type="radio" name="poll-choice" value="${idx}" style='margin-right: 8px;'>${opt}
+          </label>`).join("");
         bEl.style.display = "block";
       }
     }
@@ -224,15 +235,15 @@
         if (!snap.exists()) return;
         const data = snap.data();
         const total = data.votes.reduce((a, b) => a + b, 0);
-        const qEl = document.getElementById("poll-question");
-        qEl.textContent = data.question;
 
+        const qEl = document.getElementById("poll-question");
         const oEl = document.getElementById("poll-options");
         const bEl = document.getElementById("submit-poll");
+        const rEl = document.getElementById("poll-results");
+
+        qEl.textContent = data.question;
         oEl.style.display = "none";
         bEl.style.display = "none";
-
-        const rEl = document.getElementById("poll-results");
         rEl.innerHTML = data.options.map((opt, idx) => {
           const percent = total ? Math.round((data.votes[idx] / total) * 100) : 0;
           return `<div style='margin-bottom: 10px;'>
@@ -248,9 +259,7 @@
         const backBtn = document.createElement("div");
         backBtn.className = "back-link";
         backBtn.textContent = "← Revenir à la question du jour";
-        backBtn.onclick = () => {
-          renderPoll();
-        };
+        backBtn.onclick = () => renderPoll();
         rEl.appendChild(backBtn);
       };
 
