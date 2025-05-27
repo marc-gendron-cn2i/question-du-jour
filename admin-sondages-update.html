@@ -92,16 +92,21 @@
     const db = getFirestore(app);
 
     function toUTCStringFromLocal(dateStr, timeStr) {
-      const local = new Date(`${dateStr}T${timeStr}`);
-      return new Date(local.getTime() - local.getTimezoneOffset() * 60000).toISOString();
+      const localDate = new Date(`${dateStr}T${timeStr}:00`);
+      return localDate.toISOString();
     }
 
     function fromUTCToLocalInput(utcString) {
-      const utcDate = new Date(utcString);
-      const local = new Date(utcDate.getTime() + utcDate.getTimezoneOffset() * 60000);
+      const local = new Date(utcString); // pas de conversion manuelle
+      const yyyy = local.getFullYear();
+      const mm = String(local.getMonth() + 1).padStart(2, '0');
+      const dd = String(local.getDate()).padStart(2, '0');
+      const hours = String(local.getHours()).padStart(2, '0');
+      const minutes = String(local.getMinutes()).padStart(2, '0');
+
       return {
-        date: local.toISOString().slice(0, 10),
-        time: local.toTimeString().slice(0, 5)
+        date: `${yyyy}-${mm}-${dd}`,
+        time: `${hours}:${minutes}`
       };
     }
 
@@ -121,7 +126,6 @@
       input.className = 'option-input';
       input.required = true;
       input.value = value;
-
       row.appendChild(input);
 
       if (removable) {
