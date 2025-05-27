@@ -60,7 +60,6 @@
       margin-bottom: 1rem;
     }
   </style>
-
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
     import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
@@ -89,6 +88,11 @@
         minute: '2-digit',
         second: '2-digit'
       });
+    }
+
+    function getLocalPollId() {
+      const local = new Date().toLocaleString('en-CA', { timeZone: 'America/Toronto' });
+      return local.split(',')[0];
     }
 
     function updateDateTimePreviews() {
@@ -130,7 +134,7 @@
 
       const dateFin = new Date(now);
       dateFin.setDate(now.getDate() + 2);
-      dateFin.setHours(5, 59, 0, 0); // ✅ Fin à 05:59
+      dateFin.setHours(5, 59, 0, 0);
 
       const toDateInput = d => d.toISOString().slice(0, 10);
       const toTimeInput = d => d.toTimeString().slice(0, 5);
@@ -184,10 +188,8 @@
       });
 
       document.getElementById('dateDebut').addEventListener('change', async () => {
-        const dateDebut = document.getElementById('dateDebut').value;
-        if (!dateDebut) return;
-
-        const pollRef = doc(db, "polls", dateDebut);
+        const pollId = getLocalPollId();
+        const pollRef = doc(db, "polls", pollId);
         const snapshot = await getDoc(pollRef);
 
         if (snapshot.exists()) {
@@ -239,6 +241,9 @@
       form.onsubmit = async (e) => {
         e.preventDefault();
 
+        const pollId = getLocalPollId();
+        const pollRef = doc(db, "polls", pollId);
+
         const dateDebut = document.getElementById('dateDebut').value;
         const heureDebut = document.getElementById('heureDebut').value;
         const dateFin = document.getElementById('dateFin').value;
@@ -263,7 +268,6 @@
           return;
         }
 
-        const pollRef = doc(db, "polls", dateDebut);
         await setDoc(pollRef, {
           question,
           options,
@@ -296,21 +300,15 @@
 <body>
   <h1>Créer une question du jour</h1>
   <form id="pollForm">
-
-<!-- [...] En-tête et style inchangés -->
-
-<!-- Champ site avec valeur par défaut "lesoleil" -->
-<label for="site">Site</label>
-<select id="site" required>
-  <option value="lesoleil" selected>Le Soleil</option>
-  <option value="ledroit">Le Droit</option>
-  <option value="lenouvelliste">Le Nouvelliste</option>
-  <option value="lequotidien">Le Quotidien</option>
-  <option value="latribune">La Tribune</option>
-  <option value="lavoixdelest">La Voix de l'Est</option>
-</select>
-
-
+    <label for="site">Site</label>
+    <select id="site" required>
+      <option value="lesoleil" selected>Le Soleil</option>
+      <option value="ledroit">Le Droit</option>
+      <option value="lenouvelliste">Le Nouvelliste</option>
+      <option value="lequotidien">Le Quotidien</option>
+      <option value="latribune">La Tribune</option>
+      <option value="lavoixdelest">La Voix de l'Est</option>
+    </select>
     <div class="flex-row">
       <div class="flex-col">
         <label for="dateDebut">Date de début</label>
@@ -322,7 +320,6 @@
       </div>
     </div>
     <small id="startDateTimePreview"></small>
-
     <div class="flex-row">
       <div class="flex-col">
         <label for="dateFin">Date de fin</label>
@@ -334,14 +331,11 @@
       </div>
     </div>
     <small id="endDateTimePreview"></small>
-
     <label for="question">Question</label>
     <textarea id="question" rows="2" required placeholder="Quelle est votre saison préférée ?"></textarea>
-
     <label>Options de réponse (2 à 8)</label>
     <div id="optionsContainer"></div>
     <button type="button" id="addOption">Ajouter une option</button>
-
     <button type="submit">Créer / Mettre à jour</button>
     <div class="message" id="successMessage"></div>
   </form>
