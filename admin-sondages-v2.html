@@ -12,9 +12,7 @@
       padding: 1rem;
       background: #f8f8f8;
     }
-    h1 {
-      color: #d51D2C;
-    }
+    h1 { color: #d51D2C; }
     label {
       display: block;
       margin-top: 1rem;
@@ -25,9 +23,7 @@
       gap: 1rem;
       margin-bottom: 1rem;
     }
-    .inline-inputs > div {
-      flex: 1;
-    }
+    .inline-inputs > div { flex: 1; }
     input[type="text"], input[type="date"], input[type="time"], textarea, select {
       width: 100%;
       padding: 0.5rem;
@@ -48,9 +44,7 @@
       color: #888;
       padding: 0 0.25rem;
     }
-    .option-input {
-      flex: 1;
-    }
+    .option-input { flex: 1; }
     .remove-option {
       background: transparent;
       border: none;
@@ -75,6 +69,7 @@
       color: #d51D2C;
     }
   </style>
+
   <script type="module">
     import Sortable from "https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/+esm";
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
@@ -92,23 +87,8 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    function toUTCStringFromLocal(dateStr, timeStr) {
-      const localDate = new Date(`${dateStr}T${timeStr}:00`);
-      return localDate.toISOString();
-    }
-
-    function fromUTCToLocalInput(utcString) {
-      const local = new Date(utcString);
-      const yyyy = local.getFullYear();
-      const mm = String(local.getMonth() + 1).padStart(2, '0');
-      const dd = String(local.getDate()).padStart(2, '0');
-      const hours = String(local.getHours()).padStart(2, '0');
-      const minutes = String(local.getMinutes()).padStart(2, '0');
-
-      return {
-        date: `${yyyy}-${mm}-${dd}`,
-        time: `${hours}:${minutes}`
-      };
+    function getPollId(site, date) {
+      return `${site}_${date}`;
     }
 
     function createOptionInput(value = "", removable = true) {
@@ -140,6 +120,21 @@
       return row;
     }
 
+    function fromUTCToLocalInput(utcString) {
+      const local = new Date(utcString);
+      const yyyy = local.getFullYear();
+      const mm = String(local.getMonth() + 1).padStart(2, '0');
+      const dd = String(local.getDate()).padStart(2, '0');
+      const hours = String(local.getHours()).padStart(2, '0');
+      const minutes = String(local.getMinutes()).padStart(2, '0');
+      return { date: `${yyyy}-${mm}-${dd}`, time: `${hours}:${minutes}` };
+    }
+
+    function toUTCStringFromLocal(dateStr, timeStr) {
+      const localDate = new Date(`${dateStr}T${timeStr}:00`);
+      return localDate.toISOString();
+    }
+
     function setDefaultTimes() {
       const now = new Date();
       const start = new Date(now);
@@ -156,23 +151,66 @@
       document.getElementById('heureFin').value = '05:59';
     }
 
+    async function loadPollFromSelection() {
+      const site = document.getElementById('site').value;
+      const date = document.getElementById('dateDebut').value;
+      const pollId = getPollId(site, date);
+      const pollRef = doc(db, "polls", pollId);
+      const snapshot = await getDoc(pollRef);
+
+      const qField = document.getElementById('question');
+      const hDebut = document.getElementById('heureDebut');
+      const dFin = document.getElementById('dateFin');
+      const hFin = document.getElementById('heureFin');
+      const optionsContainer = document.getElementById('optionsContainer');
+      const message = document.getElementById('successMessage');
+
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        const start = fromUTCToLocalInput(data.startDateTime);
+        const end = fromUTCToLocalInput(data.endDateTime);
+        qField.value = data.question || '';
+        hDebut.value = start.time;
+        dFin.value = end.date;
+        hFin.value = end.time;
+        optionsContainer.innerHTML = '';
+        data.options.forEach((opt, idx) => {
+          optionsContainer.appendChild(createOptionInput(opt, idx >= 2));
+        });
+        const now = new Date();
+        const isOver = now >= new Date(data.endDateTime);
+        message.textContent = isOver
+          ? "Ce sondage est terminé. Vous pouvez le consulter, mais pas le modifier."
+          : "Sondage actif. Vous pouvez le modifier.";
+        document.querySelectorAll('#pollForm input, #pollForm textarea, #pollForm button, #pollForm select').forEach(el => {
+          el.disabled = isOver && el.id !== 'dateDebut' && el.id !== 'site';
+        });
+      } else {
+        qField.value = '';
+        qField.placeholder = 'Inscrivez votre question';
+        hDebut.value = '06:00';
+        const d = new Date(`${date}T06:00:00`);
+        const end = new Date(d);
+        end.setDate(d.getDate() + 1);
+        dFin.value = end.toISOString().slice(0, 10);
+        hFin.value = '05:59';
+        message.textContent = '';
+        document.querySelectorAll('#pollForm input, #pollForm textarea, #pollForm button, #pollForm select').forEach(el => {
+          el.disabled = false;
+        });
+        optionsContainer.innerHTML = '';
+        optionsContainer.appendChild(createOptionInput("", false));
+        optionsContainer.appendChild(createOptionInput("", false));
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       const form = document.getElementById('pollForm');
       const optionsContainer = document.getElementById('optionsContainer');
-      const addOptionButton = document.getElementById('addOption');
-      const message = document.getElementById('successMessage');
 
       setDefaultTimes();
-
       optionsContainer.appendChild(createOptionInput("", false));
       optionsContainer.appendChild(createOptionInput("", false));
-
-      addOptionButton.addEventListener('click', () => {
-        const currentInputs = optionsContainer.querySelectorAll('input.option-input');
-        if (currentInputs.length < 8) {
-          optionsContainer.appendChild(createOptionInput());
-        }
-      });
 
       new Sortable(optionsContainer, {
         animation: 150,
@@ -180,81 +218,35 @@
         ghostClass: 'dragging'
       });
 
-      document.getElementById('dateDebut').addEventListener('change', async () => {
-        const dateDebut = document.getElementById('dateDebut').value;
-        const pollRef = doc(db, "polls", dateDebut);
-        const snapshot = await getDoc(pollRef);
-
-        const d = new Date(`${dateDebut}T06:00:00`);
-        const end = new Date(d);
-        end.setDate(d.getDate() + 1);
-        document.getElementById('heureDebut').value = '06:00';
-        document.getElementById('dateFin').value = end.toISOString().slice(0, 10);
-        document.getElementById('heureFin').value = '05:59';
-
-        const questionField = document.getElementById('question');
-        questionField.value = '';
-        questionField.placeholder = 'Inscrivez votre question';
-
-        if (snapshot.exists()) {
-          const data = snapshot.data();
-          const now = new Date();
-          const isOver = now >= new Date(data.endDateTime);
-
-          const start = fromUTCToLocalInput(data.startDateTime);
-          const fin = fromUTCToLocalInput(data.endDateTime);
-
-          document.getElementById('dateDebut').value = start.date;
-          document.getElementById('heureDebut').value = start.time;
-          document.getElementById('dateFin').value = fin.date;
-          document.getElementById('heureFin').value = fin.time;
-          questionField.value = data.question || '';
-          document.getElementById('site').value = data.site || 'lesoleil';
-
-          optionsContainer.innerHTML = '';
-          data.options.forEach((opt, idx) => {
-            optionsContainer.appendChild(createOptionInput(opt, idx >= 2));
-          });
-
-          if (isOver) {
-            document.querySelectorAll('#pollForm input, #pollForm textarea, #pollForm button, #pollForm select').forEach(el => {
-              if (el.id !== 'dateDebut') el.disabled = true;
-            });
-            message.textContent = "Ce sondage est terminé. Vous pouvez le consulter, mais pas le modifier.";
-          } else {
-            message.textContent = "Sondage actif. Vous pouvez le modifier.";
-          }
-        } else {
-          message.textContent = "";
-          document.querySelectorAll('#pollForm input, #pollForm textarea, #pollForm button, #pollForm select').forEach(el => {
-            el.disabled = false;
-          });
-          document.getElementById('site').value = 'lesoleil';
-          optionsContainer.innerHTML = '';
-          optionsContainer.appendChild(createOptionInput("", false));
-          optionsContainer.appendChild(createOptionInput("", false));
+      document.getElementById('addOption').addEventListener('click', () => {
+        const inputs = optionsContainer.querySelectorAll('.option-input');
+        if (inputs.length < 8) {
+          optionsContainer.appendChild(createOptionInput());
         }
       });
 
+      document.getElementById('dateDebut').addEventListener('change', loadPollFromSelection);
+      document.getElementById('site').addEventListener('change', loadPollFromSelection);
+
       form.onsubmit = async (e) => {
         e.preventDefault();
+        const site = document.getElementById('site').value;
         const dateDebut = document.getElementById('dateDebut').value;
         const heureDebut = document.getElementById('heureDebut').value;
         const dateFin = document.getElementById('dateFin').value;
         const heureFin = document.getElementById('heureFin').value;
         const question = document.getElementById('question').value;
-        const site = document.getElementById('site').value;
 
         const options = Array.from(document.querySelectorAll('.option-input'))
-          .map(opt => opt.value.trim())
-          .filter(Boolean);
+          .map(opt => opt.value.trim()).filter(Boolean);
 
         if (options.length < 2) {
           alert("Veuillez entrer au moins deux options.");
           return;
         }
 
-        const pollRef = doc(db, "polls", `${site}_${dateDebut}`);
+        const pollId = getPollId(site, dateDebut);
+        const pollRef = doc(db, "polls", pollId);
         const startDateTime = toUTCStringFromLocal(dateDebut, heureDebut);
         const endDateTime = toUTCStringFromLocal(dateFin, heureFin);
 
@@ -267,11 +259,7 @@
           endDateTime
         });
 
-        message.textContent = `Sondage enregistré pour le ${dateDebut}`;
-        form.reset();
-        setDefaultTimes();
-        document.getElementById('site').value = 'lesoleil';
-        document.getElementById('question').placeholder = 'Inscrivez votre question';
+        document.getElementById('successMessage').textContent = `Sondage enregistré pour ${site} le ${dateDebut}`;
       };
     });
   </script>
@@ -279,7 +267,6 @@
 <body>
   <h1>Créer une question du jour</h1>
   <form id="pollForm">
-
     <label for="site">Site</label>
     <select id="site" required>
       <option value="lesoleil" selected>Le Soleil</option>
@@ -289,7 +276,6 @@
       <option value="latribune">La Tribune</option>
       <option value="lavoixdelest">La Voix de l'Est</option>
     </select>
-
     <div class="inline-inputs">
       <div>
         <label for="dateDebut">Date de début</label>
