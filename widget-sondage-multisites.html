@@ -55,7 +55,7 @@
 
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js';
-    import { getFirestore, doc, getDoc, runTransaction, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js';
+    import { getFirestore, doc, getDoc, runTransaction, onSnapshot, setDoc } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js';
 
     const firebaseConfig = {
       apiKey: "AIzaSyDMJGl7E0O_Q2Tj7GPRM0XQTyJ4N6Wph2A",
@@ -72,17 +72,31 @@
     const CURRENT_SITE = "lesoleil";
     const localDate = new Date().toLocaleString('en-CA', { timeZone: 'America/Toronto' }).split(',')[0];
     const pollId = localDate;
+
     const userId = localStorage.getItem("pollUserId") || (() => {
       const uid = crypto.randomUUID();
       localStorage.setItem("pollUserId", uid);
       return uid;
     })();
 
-    let pollData = null;
+    function getArcIdUUID() {
+      try {
+        const info = JSON.parse(localStorage.getItem("ArcId.USER_INFO"));
+        return info?.uuid || null;
+      } catch {
+        return null;
+      }
+    }
 
     async function hasVoted(date) {
-      const voteSnap = await getDoc(doc(db, "votes", `${userId}_${date}`));
-      return voteSnap.exists();
+      const arcId = getArcIdUUID();
+      const localVote = await getDoc(doc(db, "votes", `${userId}_${date}`));
+      if (localVote.exists()) return true;
+      if (arcId) {
+        const arcVote = await getDoc(doc(db, "votes_by_arcid", `${arcId}_${date}`));
+        return arcVote.exists();
+      }
+      return false;
     }
 
     async function renderPoll() {
@@ -103,12 +117,12 @@
         return;
       }
 
-      pollData = docSnap.data();
+      const data = docSnap.data();
       const now = new Date();
-      const start = new Date(pollData.startDateTime);
-      const end = new Date(pollData.endDateTime);
+      const start = new Date(data.startDateTime);
+      const end = new Date(data.endDateTime);
 
-      if (pollData.site !== CURRENT_SITE) {
+      if (data.site !== CURRENT_SITE) {
         qEl.textContent = "Aucune question pour ce site.";
         return;
       }
@@ -123,23 +137,15 @@
         return;
       }
 
-      qEl.textContent = pollData.question;
-      const hasUserVoted = await hasVoted(pollId);
+      qEl.textContent = data.question;
 
-      if (hasUserVoted) {
-        const votedNote = document.createElement("div");
-        votedNote.textContent = "Vous y avez déjà répondu";
-        votedNote.style.fontWeight = "normal";
-        votedNote.style.fontSize = "15px";
-        votedNote.style.marginTop = "4px";
-        qEl.appendChild(votedNote);
-
+      if (await hasVoted(pollId)) {
         oEl.style.display = "none";
         bEl.style.display = "none";
         listenToResults(pollId);
       } else {
         oEl.style.display = "block";
-        oEl.innerHTML = pollData.options.map((opt, idx) => `
+        oEl.innerHTML = data.options.map((opt, idx) => `
           <label style='display:block; margin-bottom: 8px;'>
             <input type="radio" name="poll-choice" value="${idx}" style='margin-right: 8px;'>${opt}
           </label>`).join("");
@@ -150,15 +156,20 @@
     async function submitVote() {
       const selected = document.querySelector("input[name='poll-choice']:checked");
       const aEl = document.getElementById("poll-alert");
-
       if (!selected) {
         aEl.textContent = "Veuillez choisir une option.";
+        return;
+      }
+
+      if (await hasVoted(pollId)) {
+        aEl.textContent = "Vous y avez déjà répondu.";
         return;
       }
 
       const index = parseInt(selected.value);
       const pollRef = doc(db, "polls", pollId);
       const voteRef = doc(db, "votes", `${userId}_${pollId}`);
+      const arcId = getArcIdUUID();
 
       await runTransaction(db, async (t) => {
         const pollDoc = await t.get(pollRef);
@@ -169,8 +180,17 @@
         t.set(voteRef, {
           userId,
           date: pollId,
-          option: index
+          option: index,
+          ArcID: arcId || null
         });
+        if (arcId) {
+          t.set(doc(db, "votes_by_arcid", `${arcId}_${pollId}`), {
+            arcId,
+            userId,
+            date: pollId,
+            option: index
+          });
+        }
       });
 
       document.getElementById("submit-poll").style.display = "none";
@@ -198,13 +218,15 @@
             </div>
           </div>`;
         }).join("") + `<div style='margin-top: 8px; font-size: 14px;'>${total} répondant${total > 1 ? "s" : ""}</div>`;
-
         addPreviousQuestionsDropdown();
       });
     }
 
     async function addPreviousQuestionsDropdown() {
       const rEl = document.getElementById("poll-results");
+      const oldDropdown = document.querySelector("select");
+      if (oldDropdown) oldDropdown.remove();
+
       const dropdown = document.createElement("select");
       dropdown.innerHTML = `<option value="">Voir un sondage précédent…</option>`;
 
@@ -236,14 +258,10 @@
         const data = snap.data();
         const total = data.votes.reduce((a, b) => a + b, 0);
 
-        const qEl = document.getElementById("poll-question");
-        const oEl = document.getElementById("poll-options");
-        const bEl = document.getElementById("submit-poll");
-        const rEl = document.getElementById("poll-results");
+        document.getElementById("poll-question").textContent = data.question;
+        document.getElementById("poll-options").style.display = "none";
+        document.getElementById("submit-poll").style.display = "none";
 
-        qEl.textContent = data.question;
-        oEl.style.display = "none";
-        bEl.style.display = "none";
         rEl.innerHTML = data.options.map((opt, idx) => {
           const percent = total ? Math.round((data.votes[idx] / total) * 100) : 0;
           return `<div style='margin-bottom: 10px;'>
