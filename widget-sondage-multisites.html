@@ -1,0 +1,245 @@
+<div class="poll-container" style="border: 2px solid #d51D2C; border-radius: 0px; max-width: 600px; margin: 2rem auto; padding: 1.5rem; font-family: 'Red Hat Display', sans-serif;">
+  <div style="font-weight: bold; color: #d51D2C; display: flex; align-items: center; font-size: 18px; margin-bottom: 1rem;">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="margin-right: 0.5rem; width: 20px; height: 20px; fill: #d51D2C;">
+      <path d="M4 21h2V10H4v11zm7 0h2V3h-2v18zm7 0h2v-6h-2v6z"/>
+    </svg>
+    Question sondage
+  </div>
+  <div id="poll-question" style="font-weight: 700; font-size: 20px; margin-bottom: 1rem; color: #000;">Chargement…</div>
+  <div id="poll-options"></div>
+  <button id="submit-poll" style="display:none; background:#d51D2C; color:white; border:none; padding:10px 20px; font-size:16px; border-radius:6px; cursor:pointer; margin-top: 1rem;">Soumettre</button>
+  <div id="poll-results" style="display:none; margin-top:1rem;"></div>
+  <div id="poll-alert" style="margin-top:1rem; color:#d51D2C; font-weight:bold; font-size:15px;"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js';
+import { getFirestore, doc, getDoc, runTransaction, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js';
+
+document.addEventListener("DOMContentLoaded", () => {
+  const firebaseConfig = {
+    apiKey: "AIzaSyDMJGl7E0O_Q2Tj7GPRM0XQTyJ4N6Wph2A",
+    authDomain: "question-du-jour-d1a22.firebaseapp.com",
+    projectId: "question-du-jour-d1a22",
+    storageBucket: "question-du-jour-d1a22.appspot.com",
+    messagingSenderId: "113783715054",
+    appId: "1:113783715054:web:0fdc415506e644e338afff"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const today = new Date().toISOString().split('T')[0];
+  const pollId = today;
+  const userId = localStorage.getItem("pollUserId") || (() => {
+    const uid = crypto.randomUUID();
+    localStorage.setItem("pollUserId", uid);
+    return uid;
+  })();
+
+  function getArcIdUUID() {
+    try {
+      const info = JSON.parse(localStorage.getItem("ArcId.USER_INFO"));
+      return info?.uuid || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function formatDateFR(dateString) {
+    const [year, month, day] = dateString.split("-");
+    const mois = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+    const jour = parseInt(day, 10);
+    const moisNom = mois[parseInt(month, 10) - 1];
+    return `${jour === 1 ? "1er" : jour} ${moisNom} ${year}`;
+  }
+
+  async function hasVoted(date) {
+    const arcId = getArcIdUUID();
+    const voteSnap = await getDoc(doc(db, "votes", `${userId}_${date}`));
+    if (voteSnap.exists()) return true;
+    if (!arcId) return false;
+    const arcSnap = await getDoc(doc(db, "votes_by_arcid", `${arcId}_${date}`));
+    return arcSnap.exists();
+  }
+
+  async function renderPoll() {
+    const qEl = document.getElementById("poll-question");
+    const oEl = document.getElementById("poll-options");
+    const bEl = document.getElementById("submit-poll");
+    const rEl = document.getElementById("poll-results");
+    const aEl = document.getElementById("poll-alert");
+
+    const docSnap = await getDoc(doc(db, "polls", pollId));
+    if (!docSnap.exists()) {
+      qEl.textContent = "Aucune question pour aujourd'hui.";
+      return;
+    }
+    const data = docSnap.data();
+    qEl.textContent = data.question;
+    oEl.innerHTML = data.options.map((opt, idx) => `
+      <label style='display:block; margin-bottom: 8px;'>
+        <input type="radio" name="poll-choice" value="${idx}" style='margin-right: 8px;'>${opt}
+      </label>`).join("");
+    bEl.style.display = "block";
+
+    if (await hasVoted(pollId)) {
+      listenToResults();
+      oEl.style.display = "none";
+      bEl.style.display = "none";
+    }
+  }
+
+  async function submitVote() {
+    const selected = document.querySelector("input[name='poll-choice']:checked");
+    if (!selected) {
+      document.getElementById("poll-alert").textContent = "Veuillez choisir une option.";
+      return;
+    }
+
+    if (await hasVoted(pollId)) {
+      document.getElementById("poll-alert").textContent = "Vous avez déjà enregistré une réponse.";
+      listenToResults();
+      document.getElementById("poll-options").style.display = "none";
+      document.getElementById("submit-poll").style.display = "none";
+      return;
+    }
+
+    const index = parseInt(selected.value);
+    const pollRef = doc(db, "polls", pollId);
+    const voteRef = doc(db, "votes", `${userId}_${pollId}`);
+    const arcId = getArcIdUUID();
+
+    await runTransaction(db, async (t) => {
+      const pollDoc = await t.get(pollRef);
+      const data = pollDoc.data();
+      const votes = data.votes;
+      votes[index]++;
+      t.update(pollRef, { votes });
+      t.set(voteRef, {
+        userId,
+        date: pollId,
+        option: index,
+        ArcID: arcId || null
+      });
+      if (arcId) {
+        t.set(doc(db, "votes_by_arcid", `${arcId}_${pollId}`), {
+          arcId,
+          userId,
+          date: pollId,
+          option: index
+        });
+      }
+    });
+
+    listenToResults();
+    document.getElementById("poll-options").style.display = "none";
+    document.getElementById("submit-poll").style.display = "none";
+  }
+
+  function listenToResults() {
+    const rEl = document.getElementById("poll-results");
+    rEl.style.display = "block";
+    rEl.innerHTML = "<em>Chargement des résultats…</em>";
+
+    onSnapshot(doc(db, "polls", pollId), docSnap => {
+      const data = docSnap.data();
+      const total = data.votes.reduce((a, b) => a + b, 0);
+      rEl.innerHTML = data.options.map((opt, idx) => {
+        const percent = total ? Math.round((data.votes[idx] / total) * 100) : 0;
+        return `<div style='margin-bottom: 10px;'>
+          <div style='display: flex; justify-content: space-between;'>
+            <span>${opt}</span><span><b>${percent}%</b></span>
+          </div>
+          <div style='background:#eee; border-radius:4px; height:6px; overflow:hidden;'>
+            <div style='width:${percent}%; height:6px; background:#d51D2C;'></div>
+          </div>
+        </div>`;
+      }).join("") + `<div style='margin-top: 8px; font-size: 14px;'>${total} répondant${total > 1 ? "s" : ""}</div>`;
+
+      const showMoreBtn = document.createElement("button");
+      showMoreBtn.textContent = "Voir les résultats des questions précédentes";
+      showMoreBtn.style = "margin-top: 1rem; background: none; border: none; color: #d51D2C; text-decoration: underline; cursor: pointer; font-size: 15px;";
+      showMoreBtn.onclick = () => {
+        showMoreBtn.remove();
+        showPreviousResultsDropdown();
+      };
+      rEl.appendChild(showMoreBtn);
+    });
+  }
+
+  function showPreviousResultsDropdown() {
+    const rEl = document.getElementById("poll-results");
+    const dropdown = document.createElement("select");
+    dropdown.style.marginTop = "1rem";
+    dropdown.style.padding = "6px";
+    dropdown.style.fontSize = "14px";
+
+    const defaultOption = document.createElement("option");
+    defaultOption.text = "Choisir une question précédente…";
+    defaultOption.value = "";
+    dropdown.appendChild(defaultOption);
+
+    const today = new Date();
+    const dates = Array.from({ length: 20 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i - 1);
+      return d.toISOString().split("T")[0];
+    });
+
+    dates.forEach(async (date) => {
+      const pollSnap = await getDoc(doc(db, "polls", date));
+      if (!pollSnap.exists()) return;
+      const data = pollSnap.data();
+      const option = document.createElement("option");
+      option.value = date;
+      option.text = `${formatDateFR(date)} – ${data.question}`;
+      dropdown.appendChild(option);
+    });
+
+    dropdown.onchange = async function () {
+      const selectedDate = this.value;
+      if (!selectedDate) return;
+
+      const pollSnap = await getDoc(doc(db, "polls", selectedDate));
+      if (!pollSnap.exists()) return;
+
+      const data = pollSnap.data();
+      const total = data.votes.reduce((a, b) => a + b, 0);
+
+      document.getElementById("poll-question").textContent = data.question;
+      document.getElementById("poll-options").style.display = "none";
+      document.getElementById("submit-poll").style.display = "none";
+      document.getElementById("poll-alert").innerHTML = `<span style='color: #000;'>Il n'est plus possible de répondre à cette question.</span>`;
+
+      rEl.innerHTML = data.options.map((opt, idx) => {
+        const percent = total ? Math.round((data.votes[idx] / total) * 100) : 0;
+        return `<div style='margin-bottom: 10px;'>
+          <div style='display: flex; justify-content: space-between;'>
+            <span>${opt}</span><span><b>${percent}%</b></span>
+          </div>
+          <div style='background:#eee; border-radius:4px; height:6px; overflow:hidden;'>
+            <div style='width:${percent}%; height:6px; background:#d51D2C;'></div>
+          </div>
+        </div>`;
+      }).join("") + `<div style='margin-top: 8px; font-size: 14px;'>${total} répondant${total > 1 ? "s" : ""}</div>`;
+
+      const resetBtn = document.createElement("button");
+      resetBtn.textContent = "Revenir à la question du jour";
+      resetBtn.style = "margin-top: 1rem; background: none; border: none; color: #d51D2C; text-decoration: underline; cursor: pointer;";
+      resetBtn.onclick = () => {
+        document.getElementById("poll-alert").innerHTML = "";
+        document.getElementById("poll-results").innerHTML = "";
+        document.getElementById("poll-options").innerHTML = "";
+        renderPoll();
+      };
+      rEl.appendChild(resetBtn);
+    };
+
+    rEl.appendChild(dropdown);
+  }
+
+  document.getElementById("submit-poll").onclick = submitVote;
+  renderPoll();
+});
+</script>
