@@ -94,7 +94,15 @@
 
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js';
-    import { getFirestore, doc, getDoc, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js';
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      collection,
+      query,
+      where,
+      getDocs
+    } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js';
 
     const firebaseConfig = {
       apiKey: "AIzaSyDMJGl7E0O_Q2Tj7GPRM0XQTyJ4N6Wph2A",
@@ -144,19 +152,31 @@
         <div class="meta"><b>${total}</b> répondant${total > 1 ? "s" : ""}</div>
       `;
 
-      // Analyse horaire des votes
-      const voteQuery = query(collection(db, "votes"), where("date", "==", pollId));
+      // --- Analyse horaire des votes en se basant sur le champ `timestamp` ---
+      const voteQuery = query(
+        collection(db, "votes"),
+        where("date", "==", pollId)
+      );
       const voteSnap = await getDocs(voteQuery);
 
+      // Crée un compteur pour chaque heure 0–23
       const hourMap = Array(24).fill(0);
-      voteSnap.forEach(doc => {
-        const ts = doc.updateTime.toDate(); // UTC
-        const localHour = new Date(ts.toLocaleString("en-US", { timeZone: "America/Toronto" })).getHours();
-        hourMap[localHour]++;
+      voteSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (!data.timestamp) return;
+        const tsDate = data.timestamp.toDate();
+        // Récupère l'heure locale Toronto (format "HH")
+        const hourStr = new Intl.DateTimeFormat('fr-FR', {
+          hour: '2-digit',
+          hour12: false,
+          timeZone: 'America/Toronto'
+        }).format(tsDate);
+        const h = parseInt(hourStr, 10);
+        if (!isNaN(h)) hourMap[h]++;
       });
 
       const labels = Array.from({ length: 24 }, (_, h) => `${h.toString().padStart(2, '0')}h`);
-      const data = {
+      const dataChart = {
         labels,
         datasets: [{
           label: "Votes par heure (heure locale)",
@@ -171,11 +191,16 @@
       if (chart) chart.destroy();
       chart = new Chart(ctx, {
         type: 'line',
-        data,
+        data: dataChart,
         options: {
           scales: {
-            y: { beginAtZero: true, title: { display: true, text: "Nombre de votes" } },
-            x: { title: { display: true, text: "Heure de la journée" } }
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: "Nombre de votes" }
+            },
+            x: {
+              title: { display: true, text: "Heure de la journée" }
+            }
           }
         }
       });
