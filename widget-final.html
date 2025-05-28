@@ -55,7 +55,14 @@
 
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js';
-    import { getFirestore, doc, getDoc, runTransaction, onSnapshot, setDoc } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js';
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      runTransaction,
+      onSnapshot,
+      serverTimestamp
+    } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js';
 
     const firebaseConfig = {
       apiKey: "AIzaSyDMJGl7E0O_Q2Tj7GPRM0XQTyJ4N6Wph2A",
@@ -70,7 +77,9 @@
     const db = getFirestore(app);
 
     const CURRENT_SITE = "lesoleil";
-    const localDate = new Date().toLocaleString('en-CA', { timeZone: 'America/Toronto' }).split(',')[0];
+    const localDate = new Date()
+      .toLocaleString('en-CA', { timeZone: 'America/Toronto' })
+      .split(',')[0];
     const pollId = `${CURRENT_SITE}_${localDate}`;
 
     const userId = localStorage.getItem("pollUserId") || (() => {
@@ -147,9 +156,10 @@
       } else {
         oEl.style.display = "block";
         oEl.innerHTML = data.options.map((opt, idx) => `
-          <label style='display:block; margin-bottom: 8px;'>
-            <input type="radio" name="poll-choice" value="${idx}" style='margin-right: 8px;'>${opt}
-          </label>`).join("");
+          <label style="display:block; margin-bottom: 8px;">
+            <input type="radio" name="poll-choice" value="${idx}" style="margin-right: 8px;">${opt}
+          </label>
+        `).join("");
         bEl.style.display = "block";
       }
     }
@@ -157,24 +167,22 @@
     async function submitVote() {
       const selected = document.querySelector("input[name='poll-choice']:checked");
       const aEl = document.getElementById("poll-alert");
-
       const arcId = getArcIdUUID();
+
       if (!arcId) {
         aEl.innerHTML = `Vous devez être connecté pour répondre. <a href="/connexion" style="color: #d51D2C; text-decoration: underline;">Me connecter</a>`;
         return;
       }
-
       if (!selected) {
         aEl.textContent = "Veuillez choisir une option.";
         return;
       }
-
       if (await hasVoted(pollId)) {
         aEl.textContent = "Vous y avez déjà répondu.";
         return;
       }
 
-      const index = parseInt(selected.value);
+      const index = parseInt(selected.value, 10);
       const pollRef = doc(db, "polls", pollId);
       const voteRef = doc(db, "votes", `${userId}_${pollId}`);
 
@@ -184,17 +192,21 @@
         const votes = data.votes;
         votes[index]++;
         t.update(pollRef, { votes });
+
+        // On stocke le vote avec un horodatage serveur Firestore
         t.set(voteRef, {
           userId,
           date: pollId,
           option: index,
-          ArcID: arcId
+          ArcID: arcId,
+          timestamp: serverTimestamp()
         });
         t.set(doc(db, "votes_by_arcid", `${arcId}_${pollId}`), {
           arcId,
           userId,
           date: pollId,
-          option: index
+          option: index,
+          timestamp: serverTimestamp()
         });
       });
 
@@ -214,15 +226,15 @@
         const total = data.votes.reduce((a, b) => a + b, 0);
         rEl.innerHTML = data.options.map((opt, idx) => {
           const percent = total ? Math.round((data.votes[idx] / total) * 100) : 0;
-          return `<div style='margin-bottom: 10px;'>
-            <div style='display: flex; justify-content: space-between;'>
+          return `<div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between;">
               <span>${opt}</span><span><b>${percent}%</b></span>
             </div>
-            <div style='background:#eee; border-radius:4px; height:6px; overflow:hidden;'>
-              <div style='width:${percent}%; height:6px; background:#d51D2C;'></div>
+            <div style="background:#eee; border-radius:4px; height:6px; overflow:hidden;">
+              <div style="width:${percent}%; height:6px; background:#d51D2C;"></div>
             </div>
           </div>`;
-        }).join("") + `<div style='margin-top: 8px; font-size: 14px;'>${total} répondant${total > 1 ? "s" : ""}</div>`;
+        }).join("") + `<div style="margin-top: 8px; font-size: 14px;">${total} répondant${total > 1 ? "s" : ""}</div>`;
       });
     }
 
