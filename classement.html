@@ -62,9 +62,44 @@
       font-size: 16px;
       margin-top: 1rem;
     }
+    /* Menu de navigation */
+nav.main-menu {
+  text-align: center;
+  margin-bottom: 2rem;
+  font-family: 'Red Hat Display', sans-serif;
+}
+
+nav.main-menu a {
+  display: inline-block;
+  margin: 0 0.5rem;
+  padding: 0.5rem 1rem;
+  color: #d51D2C;
+  text-decoration: none;
+  font-weight: 600;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+nav.main-menu a:hover,
+nav.main-menu a:focus {
+  background: #d51D2C;
+  color: #fff;
+  border-color: #d51D2C;
+}
+
   </style>
 </head>
 <body>
+  <nav class="main-menu">
+  <a href="https://marc-gendron-cn2i.github.io/question-du-jour/admin-final.html">
+    Créer une question du jour
+  </a>
+  <a href="https://marc-gendron-cn2i.github.io/question-du-jour/analytics.html">
+    Analytics
+  </a>
+</nav>
+
   <h1>Classement des utilisateurs</h1>
 
   <div class="row">
