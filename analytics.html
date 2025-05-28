@@ -18,8 +18,8 @@
     }
     label {
       font-weight: 700;
-      margin-top: 1rem;
       display: block;
+      margin-bottom: 0.25rem;
     }
     select, input[type="date"] {
       padding: 10px;
@@ -28,8 +28,15 @@
       border: 1px solid #ccc;
       width: 100%;
       box-sizing: border-box;
-      margin-bottom: 1rem;
       font-family: 'Red Hat Display', sans-serif;
+    }
+    .inline-inputs {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .inline-inputs > div {
+      flex: 1;
     }
     .results-box {
       background: white;
@@ -61,18 +68,23 @@
 <body>
   <h1>Analyse des sondages</h1>
 
-  <label for="site">Site</label>
-  <select id="site">
-    <option value="lesoleil">Le Soleil</option>
-    <option value="ledroit">Le Droit</option>
-    <option value="lenouvelliste">Le Nouvelliste</option>
-    <option value="lequotidien">Le Quotidien</option>
-    <option value="latribune">La Tribune</option>
-    <option value="lavoixdelest">La Voix de l'Est</option>
-  </select>
-
-  <label for="date">Date</label>
-  <input type="date" id="date" />
+  <div class="inline-inputs">
+    <div>
+      <label for="site">Site</label>
+      <select id="site">
+        <option value="lesoleil">Le Soleil</option>
+        <option value="ledroit">Le Droit</option>
+        <option value="lenouvelliste">Le Nouvelliste</option>
+        <option value="lequotidien">Le Quotidien</option>
+        <option value="latribune">La Tribune</option>
+        <option value="lavoixdelest">La Voix de l'Est</option>
+      </select>
+    </div>
+    <div>
+      <label for="date">Date</label>
+      <input type="date" id="date" />
+    </div>
+  </div>
 
   <div class="results-box" id="resultsContainer">
     <div style="color:#888;">Sélectionnez un site et une date.</div>
@@ -111,6 +123,7 @@
       const pollSnap = await getDoc(doc(db, "polls", pollId));
       if (!pollSnap.exists()) {
         resultsContainer.innerHTML = "<div style='color:#888;'>Aucun sondage trouvé pour cette date et ce site.</div>";
+        if (chart) chart.destroy();
         return;
       }
 
@@ -173,4 +186,3 @@
   </script>
 </body>
 </html>
-
