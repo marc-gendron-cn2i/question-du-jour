@@ -81,18 +81,21 @@
     </div>
     <div style="flex:1">
       <label for="start">Du</label>
-      <input type="date" id="start" value="2025-04-28" />
+      <input type="date" id="start" value="2025-04-28">
     </div>
     <div style="flex:1">
       <label for="end">Au</label>
-      <input type="date" id="end" value="2025-05-28" />
+      <input type="date" id="end" value="2025-05-28">
     </div>
   </div>
 
   <button class="btn" id="loadRanking">Afficher le classement</button>
+  <button class="btn" id="exportCSV" style="display:none;">Exporter en CSV</button>
 
   <div class="results-box" id="rankingContainer">
-    <div style="color:#888;">Sélectionnez un site et une plage de dates, puis cliquez sur « Afficher le classement ».</div>
+    <div style="color:#888;">
+      Sélectionnez un site et une plage de dates, puis cliquez sur « Afficher le classement ».
+    </div>
   </div>
 
   <button class="btn" id="loadMore" style="display:none;">Afficher 25 de plus</button>
@@ -121,33 +124,75 @@
     const rankingContainer = document.getElementById("rankingContainer");
     const loadBtn = document.getElementById("loadRanking");
     const loadMoreBtn = document.getElementById("loadMore");
+    const exportBtn = document.getElementById("exportCSV");
 
     let fullRanking = [];
     let displayIndex = 0;
 
     async function fetchRanking() {
+      console.log("[fetchRanking] début");
       rankingContainer.innerHTML = "<div style='color:#888;'>Chargement…</div>";
       loadMoreBtn.style.display = "none";
+      exportBtn.style.display = "none";
       fullRanking = [];
       displayIndex = 0;
 
       const site = siteEl.value;
       const start = startEl.value;
       const end = endEl.value;
+      console.log("[fetchRanking] paramètres :", { site, start, end });
 
       const voteSnap = await getDocs(collection(db, "votes_by_arcid"));
       const filtered = [];
 
       voteSnap.forEach(doc => {
         const data = doc.data();
-        if (data.arcId && data.date.startsWith(site + "_")) {
-          const dateOnly = data.date.split("_")[1];
-          if (dateOnly >= start && dateOnly <= end) {
-            filtered.push(data.arcId);
-          }
+        console.log(`[Vote ${doc.id}]`, data);
+
+        if (!data.date) {
+          console.warn(`[${doc.id}] pas de champ date`);
+          return;
+        }
+
+        let docSite = null;
+        let dateOnly = null;
+
+        // Cas : Firestore Timestamp
+        if (typeof data.date.toDate === 'function') {
+          const jsDate = data.date.toDate();
+          dateOnly = jsDate.toISOString().split('T')[0];
+        }
+        // Cas : string avec préfixe "site_YYYY-MM-DD"
+        else if (typeof data.date === 'string' && data.date.includes('_')) {
+          const parts = data.date.split('_');
+          docSite = parts[0];
+          dateOnly = parts[1];
+        }
+        // Cas : string pure "YYYY-MM-DD"
+        else if (typeof data.date === 'string') {
+          dateOnly = data.date;
+        }
+        else {
+          console.warn(`[${doc.id}] format de date inattendu :`, data.date);
+          return;
+        }
+
+        // Si le document a un champ `site` séparé
+        if (!docSite && typeof data.site === 'string') {
+          docSite = data.site;
+        }
+        if (!docSite) {
+          console.warn(`[${doc.id}] impossible de déterminer le site`);
+          return;
+        }
+
+        // Filtrer par site et plage de dates
+        if (data.arcId && docSite === site && dateOnly >= start && dateOnly <= end) {
+          filtered.push(data.arcId);
         }
       });
 
+      // Comptage des votes par ArcID
       const counts = {};
       filtered.forEach(id => {
         counts[id] = (counts[id] || 0) + 1;
@@ -157,7 +202,15 @@
         .sort((a, b) => b[1] - a[1])
         .map(([id, count]) => ({ id, count }));
 
+      console.log("[fetchRanking] fullRanking =", fullRanking);
       renderMore();
+
+      if (fullRanking.length > 0) {
+        exportBtn.style.display = "inline-block";
+        console.log("[fetchRanking] exportBtn visible");
+      } else {
+        console.log("[fetchRanking] aucun résultat, export désactivé");
+      }
     }
 
     function renderMore() {
@@ -169,24 +222,61 @@
           </div>
         `;
       }
-
-      slice.forEach(({ id, count }, i) => {
+      slice.forEach(({ id, count }) => {
         const div = document.createElement("div");
         div.className = "user-entry";
         div.innerHTML = `<span>${id}</span><span><b>${count}</b></span>`;
         rankingContainer.appendChild(div);
       });
-
       displayIndex += slice.length;
-      if (displayIndex < fullRanking.length) {
-        loadMoreBtn.style.display = "block";
-      } else {
-        loadMoreBtn.style.display = "none";
+      loadMoreBtn.style.display = (displayIndex < fullRanking.length) ? "block" : "none";
+    }
+
+    function exportToCSV() {
+      console.log("[exportToCSV] appelé");
+      console.log(" fullRanking.length =", fullRanking.length);
+      if (!fullRanking.length) {
+        console.warn("[exportToCSV] rien à exporter");
+        return;
       }
+
+      // Échappement CSV
+      const escapeValue = v => {
+        const s = String(v).replace(/"/g, '""');
+        return `"${s}"`;
+      };
+      const header = ['ArcID', 'Nombre de votes'];
+      const lines = [
+        header.join(','),
+        ...fullRanking.map(({ id, count }) =>
+          [escapeValue(id), escapeValue(count)].join(',')
+        )
+      ];
+      const csvString = lines.join('\r\n');
+      console.log("[exportToCSV] csvString preview =", csvString.slice(0, 100), "…");
+
+      // Création du Blob et URL
+      const blob = new Blob([`\uFEFF${csvString}`], { type: 'text/csv;charset=utf-8;' });
+      console.log("[exportToCSV] Blob créé :", blob);
+      const url = URL.createObjectURL(blob);
+      console.log("[exportToCSV] URL créée :", url);
+
+      // Téléchargement
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "classement_utilisateurs.csv";
+      console.log("[exportToCSV] link.download =", link.download);
+      document.body.appendChild(link);
+      link.click();
+      console.log("[exportToCSV] link.click() fait");
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      console.log("[exportToCSV] URL révoquée");
     }
 
     loadBtn.addEventListener("click", fetchRanking);
     loadMoreBtn.addEventListener("click", renderMore);
+    exportBtn.addEventListener("click", exportToCSV);
   </script>
 </body>
 </html>
