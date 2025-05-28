@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Classement des utilisateurs</title>
+  <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Red Hat Display', sans-serif;
+      max-width: 700px;
+      margin: 2rem auto;
+      padding: 1rem;
+      background: #f8f8f8;
+    }
+    h1 {
+      color: #d51D2C;
+    }
+    label {
+      font-weight: 700;
+      margin-top: 1rem;
+      display: block;
+    }
+    .row {
+      display: flex;
+      gap: 1rem;
+    }
+    select, input[type="date"] {
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      width: 100%;
+      box-sizing: border-box;
+      font-family: 'Red Hat Display', sans-serif;
+    }
+    .results-box {
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-top: 1.5rem;
+    }
+    .user-entry {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      font-size: 15px;
+    }
+    .user-entry.header {
+      font-weight: bold;
+      border-bottom: 2px solid #bbb;
+      background: #f0f0f0;
+    }
+    .btn {
+      background: #d51D2C;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Classement des utilisateurs</h1>
+
+  <div class="row">
+    <div style="flex:1">
+      <label for="site">Site</label>
+      <select id="site">
+        <option value="lesoleil">Le Soleil</option>
+        <option value="ledroit">Le Droit</option>
+        <option value="lenouvelliste">Le Nouvelliste</option>
+        <option value="lequotidien">Le Quotidien</option>
+        <option value="latribune">La Tribune</option>
+        <option value="lavoixdelest">La Voix de l'Est</option>
+      </select>
+    </div>
+    <div style="flex:1">
+      <label for="start">Du</label>
+      <input type="date" id="start" value="2025-04-28">
+    </div>
+    <div style="flex:1">
+      <label for="end">Au</label>
+      <input type="date" id="end" value="2025-05-28">
+    </div>
+  </div>
+
+  <button class="btn" id="loadRanking">Afficher le classement</button>
+  <button class="btn" id="exportCSV" style="display:none;">Exporter en CSV</button>
+
+  <div class="results-box" id="rankingContainer">
+    <div style="color:#888;">
+      Sélectionnez un site et une plage de dates, puis cliquez sur « Afficher le classement ».
+    </div>
+  </div>
+
+  <button class="btn" id="loadMore" style="display:none;">Afficher 25 de plus</button>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js';
+    import {
+      getFirestore, collection, getDocs
+    } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDMJGl7E0O_Q2Tj7GPRM0XQTyJ4N6Wph2A",
+      authDomain: "question-du-jour-d1a22.firebaseapp.com",
+      projectId: "question-du-jour-d1a22",
+      storageBucket: "question-du-jour-d1a22.appspot.com",
+      messagingSenderId: "113783715054",
+      appId: "1:113783715054:web:0fdc415506e644e338afff"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const siteEl = document.getElementById("site");
+    const startEl = document.getElementById("start");
+    const endEl = document.getElementById("end");
+    const rankingContainer = document.getElementById("rankingContainer");
+    const loadBtn = document.getElementById("loadRanking");
+    const loadMoreBtn = document.getElementById("loadMore");
+    const exportBtn = document.getElementById("exportCSV");
+
+    let fullRanking = [];
+    let displayIndex = 0;
+
+    async function fetchRanking() {
+      console.log("[fetchRanking] début");
+      rankingContainer.innerHTML = "<div style='color:#888;'>Chargement…</div>";
+      loadMoreBtn.style.display = "none";
+      exportBtn.style.display = "none";
+      fullRanking = [];
+      displayIndex = 0;
+
+      const site = siteEl.value;
+      const start = startEl.value;
+      const end = endEl.value;
+      console.log("[fetchRanking] paramètres :", { site, start, end });
+
+      const voteSnap = await getDocs(collection(db, "votes_by_arcid"));
+      const filtered = [];
+
+      voteSnap.forEach(doc => {
+        const data = doc.data();
+        console.log(`[Vote ${doc.id}]`, data);
+
+        if (!data.date) {
+          console.warn(`[${doc.id}] pas de champ date`);
+          return;
+        }
+
+        let docSite = null;
+        let dateOnly = null;
+
+        // Cas : Firestore Timestamp
+        if (typeof data.date.toDate === 'function') {
+          const jsDate = data.date.toDate();
+          dateOnly = jsDate.toISOString().split('T')[0];
+        }
+        // Cas : string avec préfixe "site_YYYY-MM-DD"
+        else if (typeof data.date === 'string' && data.date.includes('_')) {
+          const parts = data.date.split('_');
+          docSite = parts[0];
+          dateOnly = parts[1];
+        }
+        // Cas : string pure "YYYY-MM-DD"
+        else if (typeof data.date === 'string') {
+          dateOnly = data.date;
+        }
+        else {
+          console.warn(`[${doc.id}] format de date inattendu :`, data.date);
+          return;
+        }
+
+        // Si le document a un champ `site` séparé
+        if (!docSite && typeof data.site === 'string') {
+          docSite = data.site;
+        }
+        if (!docSite) {
+          console.warn(`[${doc.id}] impossible de déterminer le site`);
+          return;
+        }
+
+        // Filtrer par site et plage de dates
+        if (data.arcId && docSite === site && dateOnly >= start && dateOnly <= end) {
+          filtered.push(data.arcId);
+        }
+      });
+
+      // Comptage des votes par ArcID
+      const counts = {};
+      filtered.forEach(id => {
+        counts[id] = (counts[id] || 0) + 1;
+      });
+
+      fullRanking = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([id, count]) => ({ id, count }));
+
+      console.log("[fetchRanking] fullRanking =", fullRanking);
+      renderMore();
+
+      if (fullRanking.length > 0) {
+        exportBtn.style.display = "inline-block";
+        console.log("[fetchRanking] exportBtn visible");
+      } else {
+        console.log("[fetchRanking] aucun résultat, export désactivé");
+      }
+    }
+
+    function renderMore() {
+      const slice = fullRanking.slice(displayIndex, displayIndex + 25);
+      if (displayIndex === 0) {
+        rankingContainer.innerHTML = `
+          <div class="user-entry header">
+            <span>Identifiant ArcID</span><span>Nombre de votes</span>
+          </div>
+        `;
+      }
+      slice.forEach(({ id, count }) => {
+        const div = document.createElement("div");
+        div.className = "user-entry";
+        div.innerHTML = `<span>${id}</span><span><b>${count}</b></span>`;
+        rankingContainer.appendChild(div);
+      });
+      displayIndex += slice.length;
+      loadMoreBtn.style.display = (displayIndex < fullRanking.length) ? "block" : "none";
+    }
+
+    function exportToCSV() {
+      console.log("[exportToCSV] appelé");
+      console.log(" fullRanking.length =", fullRanking.length);
+      if (!fullRanking.length) {
+        console.warn("[exportToCSV] rien à exporter");
+        return;
+      }
+
+      // Échappement CSV
+      const escapeValue = v => {
+        const s = String(v).replace(/"/g, '""');
+        return `"${s}"`;
+      };
+      const header = ['ArcID', 'Nombre de votes'];
+      const lines = [
+        header.join(','),
+        ...fullRanking.map(({ id, count }) =>
+          [escapeValue(id), escapeValue(count)].join(',')
+        )
+      ];
+      const csvString = lines.join('\r\n');
+      console.log("[exportToCSV] csvString preview =", csvString.slice(0, 100), "…");
+
+      // Création du Blob et URL
+      const blob = new Blob([`\uFEFF${csvString}`], { type: 'text/csv;charset=utf-8;' });
+      console.log("[exportToCSV] Blob créé :", blob);
+      const url = URL.createObjectURL(blob);
+      console.log("[exportToCSV] URL créée :", url);
+
+      // Téléchargement
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "classement_utilisateurs.csv";
+      console.log("[exportToCSV] link.download =", link.download);
+      document.body.appendChild(link);
+      link.click();
+      console.log("[exportToCSV] link.click() fait");
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      console.log("[exportToCSV] URL révoquée");
+    }
+
+    loadBtn.addEventListener("click", fetchRanking);
+    loadMoreBtn.addEventListener("click", renderMore);
+    exportBtn.addEventListener("click", exportToCSV);
+  </script>
+</body>
+</html>
