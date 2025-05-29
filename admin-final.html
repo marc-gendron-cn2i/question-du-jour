@@ -68,33 +68,28 @@
       font-weight: 600;
       color: #d51D2C;
     }
-    
-    /* Menu de navigation */
-nav.main-menu {
-  text-align: center;
-  margin-bottom: 2rem;
-  font-family: 'Red Hat Display', sans-serif;
-}
-
-nav.main-menu a {
-  display: inline-block;
-  margin: 0 0.5rem;
-  padding: 0.5rem 1rem;
-  color: #d51D2C;
-  text-decoration: none;
-  font-weight: 600;
-  border: 2px solid transparent;
-  border-radius: 6px;
-  transition: background 0.2s, color 0.2s, border-color 0.2s;
-}
-
-nav.main-menu a:hover,
-nav.main-menu a:focus {
-  background: #d51D2C;
-  color: #fff;
-  border-color: #d51D2C;
-}
-
+    nav.main-menu {
+      text-align: center;
+      margin-bottom: 2rem;
+      font-family: 'Red Hat Display', sans-serif;
+    }
+    nav.main-menu a {
+      display: inline-block;
+      margin: 0 0.5rem;
+      padding: 0.5rem 1rem;
+      color: #d51D2C;
+      text-decoration: none;
+      font-weight: 600;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+    nav.main-menu a:hover,
+    nav.main-menu a:focus {
+      background: #d51D2C;
+      color: #fff;
+      border-color: #d51D2C;
+    }
   </style>
 
   <script type="module">
@@ -159,20 +154,29 @@ nav.main-menu a:focus {
       return localDate.toISOString();
     }
 
-    function setDefaultTimes() {
-      const now = new Date();
-      const start = new Date(now);
-      start.setDate(start.getDate() + 1);
-      start.setHours(6, 0, 0, 0);
+    /**
+     * Définit les valeurs par défaut des champs dateDebut/heureDebut/dateFin/heureFin.
+     * @param {string|null} startDateStr — chaîne "YYYY-MM-DD" pour fixer la date de début ;
+     *   si null, on utilise (aujourd'hui + 1 jour).
+     */
+    function setDefaultTimes(startDateStr = null) {
+      const start = startDateStr
+        ? new Date(startDateStr + 'T06:00:00')
+        : (() => {
+            const n = new Date();
+            n.setDate(n.getDate() + 1);
+            n.setHours(6, 0, 0, 0);
+            return n;
+          })();
 
       const end = new Date(start);
-      end.setDate(start.getDate() + 1);
+      end.setDate(end.getDate() + 1);
       end.setHours(5, 59, 0, 0);
 
-      document.getElementById('dateDebut').value = start.toISOString().slice(0, 10);
+      document.getElementById('dateDebut').value  = start.toISOString().slice(0, 10);
       document.getElementById('heureDebut').value = '06:00';
-      document.getElementById('dateFin').value = end.toISOString().slice(0, 10);
-      document.getElementById('heureFin').value = '05:59';
+      document.getElementById('dateFin').value    = end.toISOString().slice(0, 10);
+      document.getElementById('heureFin').value   = '05:59';
     }
 
     async function loadPollFromSelection() {
@@ -196,8 +200,8 @@ nav.main-menu a:focus {
 
         qField.value = data.question || '';
         hDebut.value = start.time;
-        dFin.value = end.date;
-        hFin.value = end.time;
+        dFin.value    = end.date;
+        hFin.value    = end.time;
         optionsContainer.innerHTML = '';
         data.options.forEach((opt, idx) => {
           optionsContainer.appendChild(createOptionInput(opt, idx >= 2));
@@ -209,16 +213,18 @@ nav.main-menu a:focus {
           ? "Ce sondage est terminé. Vous pouvez le consulter, mais pas le modifier."
           : "Sondage actif. Vous pouvez le modifier.";
 
-        document.querySelectorAll('#pollForm input, #pollForm textarea, #pollForm button, #pollForm select').forEach(el => {
-          el.disabled = isOver && el.id !== 'dateDebut' && el.id !== 'site';
-        });
+        document.querySelectorAll('#pollForm input, #pollForm textarea, #pollForm button, #pollForm select')
+          .forEach(el => {
+            el.disabled = isOver && el.id !== 'dateDebut' && el.id !== 'site';
+          });
       } else {
-        setDefaultTimes();
+        // On garde la date sélectionnée et on fixe les heures par défaut
+        setDefaultTimes(date);
         qField.value = '';
         qField.placeholder = 'Inscrivez votre question';
         message.textContent = '';
-        document.querySelectorAll('#pollForm input, #pollForm textarea, #pollForm button, #pollForm select').forEach(el => el.disabled = false);
-        const optionsContainer = document.getElementById('optionsContainer');
+        document.querySelectorAll('#pollForm input, #pollForm textarea, #pollForm button, #pollForm select')
+          .forEach(el => el.disabled = false);
         optionsContainer.innerHTML = '';
         optionsContainer.appendChild(createOptionInput("", false));
         optionsContainer.appendChild(createOptionInput("", false));
@@ -260,7 +266,9 @@ nav.main-menu a:focus {
       const form = document.getElementById('pollForm');
       const optionsContainer = document.getElementById('optionsContainer');
 
+      // Valeurs par défaut au chargement : demain 06:00 → lendemain 05:59
       setDefaultTimes();
+
       optionsContainer.appendChild(createOptionInput("", false));
       optionsContainer.appendChild(createOptionInput("", false));
 
@@ -330,16 +338,11 @@ nav.main-menu a:focus {
   </script>
 </head>
 <body>
-    <nav class="main-menu">
-  <a href="https://marc-gendron-cn2i.github.io/question-du-jour/analytics.html">
-    Analytics
-  </a>
-  <a href="https://marc-gendron-cn2i.github.io/question-du-jour/classement.html">
-    Classement
-  </a>
-</nav>
+  <nav class="main-menu">
+    <a href="https://marc-gendron-cn2i.github.io/question-du-jour/analytics.html">Analytics</a>
+    <a href="https://marc-gendron-cn2i.github.io/question-du-jour/classement.html">Classement</a>
+  </nav>
 
-    
   <h1>Créer une question du jour</h1>
   <form id="pollForm">
     <label for="site">Site</label>
