@@ -63,42 +63,39 @@
       margin-top: 1rem;
     }
     /* Menu de navigation */
-nav.main-menu {
-  text-align: center;
-  margin-bottom: 2rem;
-  font-family: 'Red Hat Display', sans-serif;
-}
-
-nav.main-menu a {
-  display: inline-block;
-  margin: 0 0.5rem;
-  padding: 0.5rem 1rem;
-  color: #d51D2C;
-  text-decoration: none;
-  font-weight: 600;
-  border: 2px solid transparent;
-  border-radius: 6px;
-  transition: background 0.2s, color 0.2s, border-color 0.2s;
-}
-
-nav.main-menu a:hover,
-nav.main-menu a:focus {
-  background: #d51D2C;
-  color: #fff;
-  border-color: #d51D2C;
-}
-
+    nav.main-menu {
+      text-align: center;
+      margin-bottom: 2rem;
+      font-family: 'Red Hat Display', sans-serif;
+    }
+    nav.main-menu a {
+      display: inline-block;
+      margin: 0 0.5rem;
+      padding: 0.5rem 1rem;
+      color: #d51D2C;
+      text-decoration: none;
+      font-weight: 600;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+    nav.main-menu a:hover,
+    nav.main-menu a:focus {
+      background: #d51D2C;
+      color: #fff;
+      border-color: #d51D2C;
+    }
   </style>
 </head>
 <body>
   <nav class="main-menu">
-  <a href="https://marc-gendron-cn2i.github.io/question-du-jour/admin-final.html">
-    Créer une question du jour
-  </a>
-  <a href="https://marc-gendron-cn2i.github.io/question-du-jour/analytics.html">
-    Analytics
-  </a>
-</nav>
+    <a href="https://marc-gendron-cn2i.github.io/question-du-jour/admin-final.html">
+      Créer une question du jour
+    </a>
+    <a href="https://marc-gendron-cn2i.github.io/question-du-jour/analytics.html">
+      Analytics
+    </a>
+  </nav>
 
   <h1>Classement des utilisateurs</h1>
 
@@ -116,11 +113,11 @@ nav.main-menu a:focus {
     </div>
     <div style="flex:1">
       <label for="start">Du</label>
-      <input type="date" id="start" value="2025-04-28">
+      <input type="date" id="start">
     </div>
     <div style="flex:1">
       <label for="end">Au</label>
-      <input type="date" id="end" value="2025-05-28">
+      <input type="date" id="end">
     </div>
   </div>
 
@@ -192,27 +189,20 @@ nav.main-menu a:focus {
         let docSite = null;
         let dateOnly = null;
 
-        // Cas : Firestore Timestamp
         if (typeof data.date.toDate === 'function') {
           const jsDate = data.date.toDate();
           dateOnly = jsDate.toISOString().split('T')[0];
-        }
-        // Cas : string avec préfixe "site_YYYY-MM-DD"
-        else if (typeof data.date === 'string' && data.date.includes('_')) {
+        } else if (typeof data.date === 'string' && data.date.includes('_')) {
           const parts = data.date.split('_');
           docSite = parts[0];
           dateOnly = parts[1];
-        }
-        // Cas : string pure "YYYY-MM-DD"
-        else if (typeof data.date === 'string') {
+        } else if (typeof data.date === 'string') {
           dateOnly = data.date;
-        }
-        else {
+        } else {
           console.warn(`[${doc.id}] format de date inattendu :`, data.date);
           return;
         }
 
-        // Si le document a un champ `site` séparé
         if (!docSite && typeof data.site === 'string') {
           docSite = data.site;
         }
@@ -221,13 +211,11 @@ nav.main-menu a:focus {
           return;
         }
 
-        // Filtrer par site et plage de dates
         if (data.arcId && docSite === site && dateOnly >= start && dateOnly <= end) {
           filtered.push(data.arcId);
         }
       });
 
-      // Comptage des votes par ArcID
       const counts = {};
       filtered.forEach(id => {
         counts[id] = (counts[id] || 0) + 1;
@@ -269,13 +257,10 @@ nav.main-menu a:focus {
 
     function exportToCSV() {
       console.log("[exportToCSV] appelé");
-      console.log(" fullRanking.length =", fullRanking.length);
       if (!fullRanking.length) {
         console.warn("[exportToCSV] rien à exporter");
         return;
       }
-
-      // Échappement CSV
       const escapeValue = v => {
         const s = String(v).replace(/"/g, '""');
         return `"${s}"`;
@@ -288,30 +273,47 @@ nav.main-menu a:focus {
         )
       ];
       const csvString = lines.join('\r\n');
-      console.log("[exportToCSV] csvString preview =", csvString.slice(0, 100), "…");
-
-      // Création du Blob et URL
       const blob = new Blob([`\uFEFF${csvString}`], { type: 'text/csv;charset=utf-8;' });
-      console.log("[exportToCSV] Blob créé :", blob);
       const url = URL.createObjectURL(blob);
-      console.log("[exportToCSV] URL créée :", url);
-
-      // Téléchargement
       const link = document.createElement("a");
       link.href = url;
       link.download = "classement_utilisateurs.csv";
-      console.log("[exportToCSV] link.download =", link.download);
       document.body.appendChild(link);
       link.click();
-      console.log("[exportToCSV] link.click() fait");
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      console.log("[exportToCSV] URL révoquée");
     }
 
     loadBtn.addEventListener("click", fetchRanking);
     loadMoreBtn.addEventListener("click", renderMore);
     exportBtn.addEventListener("click", exportToCSV);
   </script>
+
+  <script>
+    // Initialise les dates automatiquement :
+    window.addEventListener('DOMContentLoaded', () => {
+      const startEl = document.getElementById('start');
+      const endEl   = document.getElementById('end');
+      const today   = new Date();
+
+      // Hier
+      const endDate = new Date(today);
+      endDate.setDate(endDate.getDate() - 1);
+
+      // 30 jours avant aujourd’hui
+      const startDate = new Date(today);
+      startDate.setDate(startDate.getDate() - 30);
+
+      const toISO = d => d.toISOString().split('T')[0];
+
+      endEl.value   = toISO(endDate);
+      startEl.value = toISO(startDate);
+
+      // Empêche de choisir une date > hier
+      endEl.max     = toISO(endDate);
+      startEl.max   = toISO(endDate);
+    });
+  </script>
+
 </body>
 </html>
