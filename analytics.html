@@ -38,6 +38,16 @@
     .inline-inputs > div {
       flex: 1;
     }
+    .btn {
+      background: #d51D2C;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-bottom: 1rem;
+    }
     .results-box {
       background: white;
       border: 1px solid #ccc;
@@ -64,42 +74,39 @@
       margin-top: 0.5rem;
     }
     /* Menu de navigation */
-nav.main-menu {
-  text-align: center;
-  margin-bottom: 2rem;
-  font-family: 'Red Hat Display', sans-serif;
-}
-
-nav.main-menu a {
-  display: inline-block;
-  margin: 0 0.5rem;
-  padding: 0.5rem 1rem;
-  color: #d51D2C;
-  text-decoration: none;
-  font-weight: 600;
-  border: 2px solid transparent;
-  border-radius: 6px;
-  transition: background 0.2s, color 0.2s, border-color 0.2s;
-}
-
-nav.main-menu a:hover,
-nav.main-menu a:focus {
-  background: #d51D2C;
-  color: #fff;
-  border-color: #d51D2C;
-}
-
+    nav.main-menu {
+      text-align: center;
+      margin-bottom: 2rem;
+      font-family: 'Red Hat Display', sans-serif;
+    }
+    nav.main-menu a {
+      display: inline-block;
+      margin: 0 0.5rem;
+      padding: 0.5rem 1rem;
+      color: #d51D2C;
+      text-decoration: none;
+      font-weight: 600;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+    nav.main-menu a:hover,
+    nav.main-menu a:focus {
+      background: #d51D2C;
+      color: #fff;
+      border-color: #d51D2C;
+    }
   </style>
 </head>
 <body>
   <nav class="main-menu">
-  <a href="https://marc-gendron-cn2i.github.io/question-du-jour/admin-final.html">
-    Créer une question du jour
-  </a>
-  <a href="https://marc-gendron-cn2i.github.io/question-du-jour/classement.html">
-    Classement
-  </a>
-</nav>
+    <a href="https://marc-gendron-cn2i.github.io/question-du-jour/admin-final.html">
+      Créer une question du jour
+    </a>
+    <a href="https://marc-gendron-cn2i.github.io/question-du-jour/classement.html">
+      Classement
+    </a>
+  </nav>
 
   <h1>Analyse des sondages</h1>
 
@@ -120,6 +127,9 @@ nav.main-menu a:focus {
       <input type="date" id="date" />
     </div>
   </div>
+
+  <!-- Bouton pour déclencher le chargement des données -->
+  <button class="btn" id="loadData">Afficher les données</button>
 
   <div class="results-box" id="resultsContainer">
     <div style="color:#888;">Sélectionnez un site et une date.</div>
@@ -153,6 +163,7 @@ nav.main-menu a:focus {
 
     const siteEl = document.getElementById("site");
     const dateEl = document.getElementById("date");
+    const loadBtn = document.getElementById("loadData");
     const resultsContainer = document.getElementById("resultsContainer");
     const ctx = document.getElementById("hourlyChart").getContext("2d");
     let chart;
@@ -194,13 +205,11 @@ nav.main-menu a:focus {
       );
       const voteSnap = await getDocs(voteQuery);
 
-      // Crée un compteur pour chaque heure 0–23
       const hourMap = Array(24).fill(0);
       voteSnap.forEach(docSnap => {
         const data = docSnap.data();
         if (!data.timestamp) return;
         const tsDate = data.timestamp.toDate();
-        // Récupère l'heure locale Toronto (format "HH")
         const hourStr = new Intl.DateTimeFormat('fr-FR', {
           hour: '2-digit',
           hour12: false,
@@ -241,8 +250,20 @@ nav.main-menu a:focus {
       });
     }
 
-    siteEl.addEventListener("change", loadResults);
-    dateEl.addEventListener("change", loadResults);
+    // On déclenche la recherche au clic
+    loadBtn.addEventListener("click", loadResults);
+  </script>
+
+  <script>
+    // Par défaut, la date du jour
+    window.addEventListener('DOMContentLoaded', () => {
+      const dateEl = document.getElementById('date');
+      const today = new Date();
+      const toISO = d => d.toISOString().split('T')[0];
+      dateEl.value = toISO(today);
+      // Empêche la sélection d'une date future
+      dateEl.max = toISO(today);
+    });
   </script>
 </body>
 </html>
