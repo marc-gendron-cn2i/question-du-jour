@@ -5,6 +5,7 @@
   <title>Widget de sondage</title>
   <style>
     body { font-family: 'Red Hat Display', sans-serif; background: #f8f8f8; margin: 0; padding: 0; }
+
     .poll-container {
       position: relative;
       border: 2px solid #d51D2C;
@@ -14,6 +15,7 @@
       padding: 1.5rem;
       background: #fff;
     }
+
     #submit-poll {
       background: #d51D2C;
       color: white;
@@ -24,12 +26,14 @@
       cursor: pointer;
       margin-top: 1rem;
     }
+
     select {
       margin-top: 1rem;
       padding: 6px;
       font-size: 14px;
       width: 100%;
     }
+
     /* fade animation pour le message de remerciement et d'erreur */
     #poll-alert {
       opacity: 0;
@@ -38,6 +42,7 @@
     #poll-alert.visible {
       opacity: 1;
     }
+
     /* Tooltip “À propos” */
     .about {
       position: absolute;
@@ -161,11 +166,14 @@
     }
 
     async function renderPoll() {
+      const container = document.querySelector('.poll-container');
       const qEl = document.getElementById("poll-question");
       const oEl = document.getElementById("poll-options");
       const bEl = document.getElementById("submit-poll");
       const aEl = document.getElementById("poll-alert");
       const rEl = document.getElementById("poll-results");
+
+      // Réinitialisation rapide
       qEl.textContent = "";
       oEl.innerHTML = "";
       aEl.textContent = "";
@@ -173,29 +181,38 @@
       rEl.innerHTML = "";
       rEl.style.display = "none";
 
+      // Récupérer le document Firestore
       const docSnap = await getDoc(doc(db, "polls", pollId));
+
+      // S’il n’y a pas de document → on cache tout le bloc
       if (!docSnap.exists()) {
-        qEl.textContent = "Aucune question pour aujourd'hui.";
+        container.style.display = 'none';
         return;
       }
+
+      // Sinon, on laisse le conteneur visible, et on continue
       const data = docSnap.data();
       const now = new Date(),
             start = new Date(data.startDateTime),
             end = new Date(data.endDateTime);
 
+      // Test de site incorrect
       if (data.site !== CURRENT_SITE) {
         qEl.textContent = "Aucune question pour ce site.";
         return;
       }
+      // Test trop tôt
       if (now < start) {
         qEl.textContent = "Trop tôt. Débute à : " + start.toLocaleString('fr-FR');
         return;
       }
+      // Test trop tard
       if (now >= end) {
         qEl.textContent = "Trop tard. Fin à : " + end.toLocaleString('fr-FR');
         return;
       }
 
+      // Afficher la question et, selon qu’on ait déjà voté ou pas, afficher options ou résultats
       qEl.textContent = data.question;
       if (await hasVoted(pollId)) {
         oEl.style.display = "none";
