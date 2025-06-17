@@ -6,26 +6,101 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family:'Red Hat Display',sans-serif; max-width:700px; margin:2rem auto; padding:1rem; background:#f8f8f8 }
-    h1 { color:#d51D2C }
-    label{font-weight:700;display:block;margin-bottom:.25rem}
-    select,input[type="date"]{padding:10px;font-size:16px;border-radius:6px;border:1px solid #ccc;width:100%;box-sizing:border-box;font-family:'Red Hat Display',sans-serif}
-    .inline-inputs{display:flex;gap:1rem;margin-bottom:1rem}
-    .inline-inputs>div{flex:1}
-    .btn{background:#d51D2C;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-size:16px;margin-bottom:1rem}
-    .results-box{background:#fff;border:1px solid #ccc;border-radius:6px;padding:1rem;margin-top:1.5rem}
-    .bar{height:6px;background:#d51D2C;border-radius:4px}
-    .result{margin-bottom:1rem}
-    .flex{display:flex;justify-content:space-between;font-size:15px}
-    .meta{font-size:14px;color:#444;margin-top:.5rem}
-    nav.main-menu{text-align:center;margin-bottom:2rem}
-    nav.main-menu a{margin:0 .5rem;padding:.5rem 1rem;color:#d51D2C;text-decoration:none;font-weight:600;border:2px solid transparent;border-radius:6px;transition:.2s}
-    nav.main-menu a:hover,nav.main-menu a:focus{background:#d51D2C;color:#fff;border-color:#d51D2C}
+    body {
+      font-family: 'Red Hat Display', sans-serif;
+      max-width: 700px;
+      margin: 2rem auto;
+      padding: 1rem;
+      background: #f8f8f8;
+    }
+    h1 {
+      color: #d51D2C;
+    }
+    label {
+      font-weight: 700;
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+    select, input[type="date"] {
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      width: 100%;
+      box-sizing: border-box;
+      font-family: 'Red Hat Display', sans-serif;
+    }
+    .inline-inputs {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .inline-inputs > div {
+      flex: 1;
+    }
+    .btn {
+      background: #d51D2C;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-bottom: 1rem;
+    }
+    .results-box {
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-top: 1.5rem;
+    }
+    .bar {
+      height: 6px;
+      background: #d51D2C;
+      border-radius: 4px;
+    }
+    .result {
+      margin-bottom: 1rem;
+    }
+    .flex {
+      display: flex;
+      justify-content: space-between;
+      font-size: 15px;
+    }
+    .meta {
+      font-size: 14px;
+      color: #444;
+      margin-top: 0.5rem;
+    }
+    /* Menu de navigation */
+    nav.main-menu {
+      text-align: center;
+      margin-bottom: 2rem;
+      font-family: 'Red Hat Display', sans-serif;
+    }
+    nav.main-menu a {
+      display: inline-block;
+      margin: 0 0.5rem;
+      padding: 0.5rem 1rem;
+      color: #d51D2C;
+      text-decoration: none;
+      font-weight: 600;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+    nav.main-menu a:hover,
+    nav.main-menu a:focus {
+      background: #d51D2C;
+      color: #fff;
+      border-color: #d51D2C;
+    }
   </style>
 </head>
 <body>
   <nav class="main-menu">
-    <a href="admin-question.html">Créer une question</a>
+    <a href="admin-question.html">Créer une question du jour</a>
     <a href="classement.html">Classement</a>
   </nav>
 
@@ -57,95 +132,101 @@
 
   <canvas id="hourlyChart" height="120" style="margin-top:2rem;"></canvas>
 
-  <script type="module">
-  // URL de votre API Gateway pour getPoll
-  const API_BASE = 'https://hx9jzqon0l.execute-api.us-east-1.amazonaws.com/prod';
+  <script>
+    const apiBase = 'https://hx9jzqon0l.execute-api.us-east-1.amazonaws.com/prod';
 
-  const siteEl   = document.getElementById("site");
-  const dateEl   = document.getElementById("date");
-  const loadBtn  = document.getElementById("loadData");
-  const resultsContainer = document.getElementById("resultsContainer");
-  const ctx      = document.getElementById("hourlyChart").getContext("2d");
-  let chart;
+    const siteEl = document.getElementById("site");
+    const dateEl = document.getElementById("date");
+    const loadBtn = document.getElementById("loadData");
+    const resultsContainer = document.getElementById("resultsContainer");
+    const ctx = document.getElementById("hourlyChart").getContext("2d");
+    let chart;
 
-  async function loadResults() {
-    const site = siteEl.value;
-    const date = dateEl.value;
-    if (!site || !date) return;
+    async function loadResults() {
+      const site = siteEl.value;
+      const date = dateEl.value;
+      if (!site || !date) return;
 
-    resultsContainer.innerHTML = "<div style='color:#888;'>Chargement…</div>";
-    if (chart) chart.destroy();
-
-    // 1) Récupérer la question et les totaux via /poll/{pollId}
-    const pollId = `${site}_${date}`;
-    const pollRes = await fetch(`${API_BASE}/poll/${pollId}`, { credentials: 'omit' });
-    if (pollRes.status === 404) {
-      resultsContainer.innerHTML = "<div style='color:#888;'>Aucun sondage trouvé pour cette date et ce site.</div>";
-      return;
-    }
-    const poll = await pollRes.json();
-
-    // Affiche la question et les barres de votes
-    const total = poll.votes.reduce((a,b)=>a+b,0);
-    resultsContainer.innerHTML = `
-      <h3 style="margin-bottom:1rem;">${poll.question}</h3>
-      ${poll.options.map((opt,i)=>{
-        const pct = total ? Math.round(poll.votes[i]/total*100) : 0;
-        return `
-          <div class="result">
-            <div class="flex"><span>${opt}</span><span><b>${pct}%</b></span></div>
-            <div style="background:#eee;border-radius:4px;height:6px;">
-              <div class="bar" style="width:${pct}%;"></div>
-            </div>
-          </div>`;
-      }).join('')}
-      <div class="meta"><b>${total}</b> répondant${total>1?'s':''}</div>
-    `;
-
-    // 2) Récupérer l’histogramme horaire via /ranking
-    const rankRes = await fetch(
-      `${API_BASE}/ranking?site=${site}&start=${date}&end=${date}`,
-      { credentials: 'omit' }
-    );
-    const ranking = await rankRes.json(); // [{ arcId, count },…]
-    // Construire un tableau de 24 zéros
-    const hourMap = Array(24).fill(0);
-    ranking.forEach(({ arcId, count })=>{
-      // impossible de déduire l’heure ici, car getRanking ne rapporte pas d’horodatage
-      // si you souhaitez l’horaire exact, il faut un endpoint dédié (votes avec timestamp).
-    });
-
-    // Pour l’exemple, on affiche juste un graphique plat
-    const labels = Array.from({length:24}, (_,h)=>`${h.toString().padStart(2,'0')}h`);
-    const dataChart = { labels, datasets:[{
-      label: "Votes par heure",
-      data: hourMap,
-      tension: 0.2,
-      borderColor: "#d51D2C",
-      backgroundColor: "#d51D2C",
-      fill: false
-    }]};
-
-    chart = new Chart(ctx, {
-      type: 'line',
-      data: dataChart,
-      options: {
-        scales: {
-          y:{ beginAtZero:true, title:{display:true,text:"Nombre de votes"} },
-          x:{ title:{display:true,text:"Heure"} }
-        }
+      const pollId = `${site}_${date}`;
+      // 1) on récupère les métadonnées de la question (getPoll)
+      let pollData;
+      try {
+        const resp = await fetch(`${apiBase}/poll/${pollId}`, {
+          credentials: 'omit'
+        });
+        if (!resp.ok) throw new Error(resp.statusText);
+        pollData = await resp.json();
+      } catch (err) {
+        resultsContainer.innerHTML = "<div style='color:#888;'>Aucun sondage trouvé pour cette date et ce site.</div>";
+        if (chart) chart.destroy();
+        return;
       }
+
+      const total = pollData.votes.reduce((a,b) => a+b, 0);
+
+      // affiche question et résultats globaux
+      resultsContainer.innerHTML = `
+        <h3 style="margin-bottom:1rem;">${pollData.question}</h3>
+        ${pollData.options.map((opt,i)=> {
+          const pct = total ? Math.round(pollData.votes[i]/total*100) : 0;
+          return `
+            <div class="result">
+              <div class="flex"><span>${opt}</span><span><b>${pct}%</b></span></div>
+              <div style="background:#eee;border-radius:4px;height:6px;overflow:hidden;">
+                <div class="bar" style="width:${pct}%;"></div>
+              </div>
+            </div>`;
+        }).join("")}
+        <div class="meta"><b>${total}</b> répondant${total>1?'s':''}</div>
+      `;
+
+      // 2) on récupère l’analyse horaire (getHourlyStats)
+      let hours;
+      try {
+        const resp2 = await fetch(`${apiBase}/hourly?site=${site}&date=${date}`, {
+          credentials: 'omit'
+        });
+        if (!resp2.ok) throw new Error(resp2.statusText);
+        hours = await resp2.json();
+      } catch (err) {
+        console.error('Erreur horaire :', err);
+        hours = Array(24).fill(0);
+      }
+
+      // 3) tracer le graphique
+      const labels = Array.from({length:24},(_,h)=>`${h.toString().padStart(2,'0')}h`);
+      const dataChart = {
+        labels,
+        datasets: [{
+          label: "Votes par heure",
+          data: hours,
+          fill: false,
+          tension: 0.2,
+          borderColor: "#d51D2C",
+          backgroundColor: "#d51D2C"
+        }]
+      };
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: dataChart,
+        options: {
+          scales: {
+            y: { beginAtZero: true, title: { display: true, text: "Nombre de votes" } },
+            x: { title: { display: true, text: "Heure locale" } }
+          }
+        }
+      });
+    }
+
+    loadBtn.addEventListener("click", loadResults);
+
+    // initialisation de la date à aujourd’hui
+    window.addEventListener('DOMContentLoaded', () => {
+      const today = new Date().toISOString().split('T')[0];
+      dateEl.value = today;
+      dateEl.max = today;
     });
-  }
-
-  loadBtn.addEventListener("click", loadResults);
-
-  // date par défaut
-  window.addEventListener('DOMContentLoaded',()=>{
-    const today = new Date().toISOString().split('T')[0];
-    dateEl.value = today;
-    dateEl.max   = today;
-  });
-</script>
+  </script>
 </body>
 </html>
