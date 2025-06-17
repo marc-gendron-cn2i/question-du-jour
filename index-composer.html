@@ -3,107 +3,92 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Admin – Question du jour</title>
+  <title>Créer une question du jour</title>
+  <!-- Font & CSS -->
   <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20250618T0000">
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="dashboard">
-    <!-- 1) Barre latérale -->
+    <!-- ========== SIDEBAR ========== -->
     <aside class="sidebar">
-      <div class="logo">  
-        <!-- Mettre ici votre logo ou nom d’application -->
-        <strong>Composer</strong>
-      </div>
+      <div class="logo">Question du jour</div>
       <nav class="side-nav">
         <ul>
-          <li><a href="#"><svg><!-- icône --></svg>Toutes les questions</a></li>
-          <li><a href="#"><svg></svg>Créer une question</a></li>
-          <li><a href="#"><svg></svg>Analytics</a></li>
-          <li><a href="#"><svg></svg>Classement</a></li>
+          <li><a href="index.html">Créer une question du jour</a></li>
+          <li><a href="analytics.html">Analytics</a></li>
+          <li><a href="classement.html">Classement</a></li>
         </ul>
       </nav>
     </aside>
 
-    <!-- 2) Conteneur principal (header + contenu) -->
+    <!-- ========== MAIN (header + content) ========== -->
     <div class="main">
-      <!-- 2a) Entête -->
+      <!-- ===== HEADER ===== -->
       <header class="header">
         <div class="header-left">
-          <select id="site-select">
-            <option>Le Soleil</option>
-            <!-- … -->
-          </select>
+          <!-- Si besoin, un sélecteur global de site -->
         </div>
         <div class="header-right">
-          <span>FR</span>
+          <span class="lang-switch">FR</span>
           <button class="btn-logout">Se déconnecter</button>
         </div>
       </header>
 
-      <!-- 2b) Contenu de page -->
+      <!-- ===== CONTENT ===== -->
       <section class="content">
         <h1>Créer / Mettre à jour une question</h1>
-       <!-- favicon pour éviter le 403 -->
-  <link rel="icon" href="favicon.ico">
 
-  <!-- Font & CSS -->
-  <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  <nav class="main-menu">
-    <a href="analytics.html">Analytics</a>
-    <a href="classement.html">Classement</a>
-  </nav>
+        <form id="pollForm">
+          <label for="site">Site</label>
+          <select id="site" required>
+            <option value="lesoleil">Le Soleil</option>
+            <option value="ledroit">Le Droit</option>
+            <option value="lenouvelliste">Le Nouvelliste</option>
+            <option value="lequotidien">Le Quotidien</option>
+            <option value="latribune">La Tribune</option>
+            <option value="lavoixdelest">La Voix de l'Est</option>
+          </select>
 
-  <h1>Créer / Mettre à jour une question</h1>
-  <form id="pollForm">
-    <label for="site">Site</label>
-    <select id="site" required>
-      <option value="lesoleil">Le Soleil</option>
-      <option value="ledroit">Le Droit</option>
-      <option value="lenouvelliste">Le Nouvelliste</option>
-      <option value="lequotidien">Le Quotidien</option>
-      <option value="latribune">La Tribune</option>
-      <option value="lavoixdelest">La Voix de l'Est</option>
-    </select>
+          <div class="inline-inputs">
+            <div>
+              <label for="dateDebut">Date de début</label>
+              <input type="date" id="dateDebut" required>
+            </div>
+            <div>
+              <label for="heureDebut">Heure de début</label>
+              <input type="time" id="heureDebut" required>
+            </div>
+          </div>
 
-    <div class="inline-inputs">
-      <div>
-        <label for="dateDebut">Date de début</label>
-        <input type="date" id="dateDebut" required>
-      </div>
-      <div>
-        <label for="heureDebut">Heure de début</label>
-        <input type="time" id="heureDebut" required>
-      </div>
+          <div class="inline-inputs">
+            <div>
+              <label for="dateFin">Date de fin</label>
+              <input type="date" id="dateFin" required>
+            </div>
+            <div>
+              <label for="heureFin">Heure de fin</label>
+              <input type="time" id="heureFin" required>
+            </div>
+          </div>
+
+          <label for="question">Question</label>
+          <textarea id="question" rows="2" required placeholder="Inscrivez votre question"></textarea>
+
+          <label>Choix de réponse (2 à 8 | Nous recommandons entre 3 et 5 choix)</label>
+          <div id="optionsContainer"></div>
+          <button type="button" id="addOption" class="btn-action">Ajouter une option</button>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Créer / Mettre à jour</button>
+          </div>
+
+          <div class="message" id="successMessage"></div>
+        </form>
+      </section>
     </div>
+  </div>
 
-    <div class="inline-inputs">
-      <div>
-        <label for="dateFin">Date de fin</label>
-        <input type="date" id="dateFin" required>
-      </div>
-      <div>
-        <label for="heureFin">Heure de fin</label>
-        <input type="time" id="heureFin" required>
-      </div>
-    </div>
-
-    <label for="question">Question</label>
-    <textarea id="question" rows="2" required placeholder="Inscrivez votre question"></textarea>
-
-    <label>Choix de réponse (2 à 8 | Nous recommandons entre 3 et 5 choix)</label>
-    <div id="optionsContainer"></div>
-    <button type="button" id="addOption">Ajouter une option</button>
-
-    <button type="submit">Créer / Mettre à jour</button>
-    <div class="message" id="successMessage"></div>
-  </form>
-
-  <!-- SortableJS global + votre app -->
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
