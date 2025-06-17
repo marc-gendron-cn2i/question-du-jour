@@ -1,5 +1,6 @@
 // app.js
-// Chargement initial, DOMContentLoaded, etc.
+const API_BASE = 'https://hx9jzqon0l.execute-api.us-east-1.amazonaws.com/prod';
+
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('pollForm');
   const siteEl = document.getElementById('site');
@@ -12,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const addOptBtn = document.getElementById('addOption');
   const successMsg = document.getElementById('successMessage');
 
-  // Fonction pour ajouter une option
+  // Ajout d’une option
   function addOption(value = '') {
     if (optsCont.children.length >= 8) return;
     const wrapper = document.createElement('div');
@@ -25,30 +26,27 @@ document.addEventListener('DOMContentLoaded', () => {
     optsCont.appendChild(wrapper);
   }
 
-  // Supprimer option
+  // Suppression d’une option (si ≥ 3 restants)
   optsCont.addEventListener('click', e => {
-    if (e.target.matches('.remove-option')) {
-      if (optsCont.children.length > 2) {
-        e.target.closest('.option-item').remove();
-      }
+    if (e.target.matches('.remove-option') && optsCont.children.length > 2) {
+      e.target.closest('.option-item').remove();
     }
   });
 
-  // Ajouter option
+  // Bouton Ajouter
   addOptBtn.addEventListener('click', () => addOption());
 
-  // Initialiser toujours 2 options au minimum
-  addOption();
-  addOption();
+  // Au moins 2 options au démarrage
+  addOption(); addOption();
 
-  // --- Drag & Drop via SortableJS (global) ---
+  // Drag & Drop
   new Sortable(optsCont, {
     handle: '.drag-handle',
     animation: 150,
     ghostClass: 'drag-ghost'
   });
 
-  // Fonction de chargement automatique du sondage existant
+  // Charge un sondage existant
   async function loadPoll() {
     const site = siteEl.value;
     const date = dateDebutEl.value;
@@ -56,67 +54,60 @@ document.addEventListener('DOMContentLoaded', () => {
     const pollId = `${site}_${date}`;
 
     try {
-      const res = await fetch(`https://.../poll/${pollId}`, { credentials: 'omit' });
+      const res = await fetch(`${API_BASE}/poll/${pollId}`, { credentials: 'omit' });
       if (res.status === 404) {
-        // pas de sondage: réinitialiser form
+        // Pas trouvé : formulaire vierge (date de début modifiable)
         form.reset();
-        // dates : dateDebut=demain, dateFin=demain ; garder modifiable dateDebut
-      } else if (res.ok) {
-        const data = await res.json();
-        // si sondage terminé : activer dateDebut seulement
-        const now = new Date();
-        const end = new Date(data.endDateTime);
-        // remplir form
-        siteEl.value = data.site;
-        dateDebutEl.value = data.pollId.split('_')[1];
-        heureDebutEl.value = new Date(data.startDateTime).toISOString().substr(11,5);
-        dateFinEl.value = data.pollId.split('_')[1];
-        heureFinEl.value = new Date(data.endDateTime).toISOString().substr(11,5);
-        questionEl.value = data.question;
-        // options
-        optsCont.innerHTML = '';
-        data.options.forEach(opt => addOption(opt));
-        // si sondage terminé, lock tous sauf dateDebut
-        if (now > end) {
-          [heureDebutEl, dateFinEl, heureFinEl, questionEl, addOptBtn].forEach(el => el.disabled = true);
-          optsCont.querySelectorAll('.option-input').forEach(i => i.disabled = true);
-        } else {
-          // sondage en cours ou futur : tout modifiable
-          [heureDebutEl, dateFinEl, heureFinEl, questionEl, addOptBtn].forEach(el => el.disabled = false);
-          optsCont.querySelectorAll('.option-input').forEach(i => i.disabled = false);
-        }
+        return;
       }
+      if (!res.ok) throw new Error(`${res.status}`);
+      const data = await res.json();
+      // Remplissage des champs
+      siteEl.value = data.site;
+      dateDebutEl.value = data.pollId.split('_')[1];
+      heureDebutEl.value = data.startDateTime.substr(11,5);
+      dateFinEl.value = data.pollId.split('_')[1];
+      heureFinEl.value = data.endDateTime.substr(11,5);
+      questionEl.value = data.question;
+      optsCont.innerHTML = '';
+      data.options.forEach(opt => addOption(opt));
+
+      // Si sondage terminé, lock tout sauf dateDebut
+      const now = new Date(), end = new Date(data.endDateTime);
+      const toDisable = [heureDebutEl, dateFinEl, heureFinEl, questionEl, addOptBtn];
+      optsCont.querySelectorAll('.option-input').forEach(i => toDisable.push(i));
+      if (now > end) toDisable.forEach(el => el.disabled = true);
+      else          toDisable.forEach(el => el.disabled = false);
+
     } catch (err) {
       console.error('Erreur loadPoll', err);
     }
   }
 
-  // Charger à l'ouverture
+  // Chargement initial + à chaque changement de dateDebut
   loadPoll();
-
-  // Si on change la dateDebut, recharger immédiatement
   dateDebutEl.addEventListener('change', loadPoll);
 
-  // Soumission du form (createOrUpdate)
+  // Soumission du formulaire
   form.addEventListener('submit', async e => {
     e.preventDefault();
-    // Validation du nombre d’options
-    const opts = Array.from(optsCont.querySelectorAll('.option-input')).map(i => i.value.trim()).filter(v => v);
+    const opts = Array.from(optsCont.querySelectorAll('.option-input'))
+                      .map(i => i.value.trim()).filter(v => v);
     if (opts.length < 2) {
       successMsg.textContent = 'Il faut au moins 2 options.';
       return;
     }
-    // Construire le payload
+
     const payload = {
       site: siteEl.value,
       startDateTime: new Date(`${dateDebutEl.value}T${heureDebutEl.value}:00Z`).toISOString(),
-      endDateTime: new Date(`${dateFinEl.value}T${heureFinEl.value}:00Z`).toISOString(),
-      question: questionEl.value.trim(),
-      options: opts
+      endDateTime:   new Date(`${dateFinEl.value}T${heureFinEl.value}:00Z`).toISOString(),
+      question:      questionEl.value.trim(),
+      options:       opts
     };
-    // Envoi
+
     try {
-      const resp = await fetch(`https://.../poll`, {
+      const resp = await fetch(`${API_BASE}/poll`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
