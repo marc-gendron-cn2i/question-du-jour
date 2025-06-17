@@ -1,8 +1,6 @@
 /* ===============================
-   Police & couleurs de base
+   Variables de base
    =============================== */
-@import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&display=swap');
-
 :root {
   --red: #d51D2C;
   --grey-bg: #f8f8f8;
@@ -10,17 +8,24 @@
   --font: 'Red Hat Display', sans-serif;
 }
 
+/* ===============================
+   Reset & typographie
+   =============================== */
 * {
   box-sizing: border-box;
-}
-
-body {
   margin: 0;
   padding: 0;
+}
+body {
   font-family: var(--font);
   background: var(--grey-bg);
   color: #000;
   line-height: 1.5;
+}
+h1 {
+  color: var(--red);
+  font-size: 2rem;
+  margin-bottom: 1rem;
 }
 
 /* ===============================
@@ -28,132 +33,107 @@ body {
    =============================== */
 nav.main-menu {
   text-align: center;
-  margin: 1.5rem 0;
+  margin-top: 1.5rem;
+  margin-bottom: 2rem;
 }
-
 nav.main-menu a {
   display: inline-block;
-  margin: 0 0.5rem;
+  margin: 0 0.75rem;
   padding: 0.5rem 1rem;
-  color: var(--red);
-  text-decoration: none;
   font-weight: 600;
+  text-decoration: none;
+  color: var(--red);
   border: 2px solid transparent;
   border-radius: 6px;
   transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
-
 nav.main-menu a:hover,
 nav.main-menu a:focus {
   background: var(--red);
   color: #fff;
   border-color: var(--red);
 }
-
-/* ===============================
-   Titres
-   =============================== */
-h1, h3 {
-  color: var(--red);
-  margin-top: 0;
-}
-
-h1 {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-}
-
-h3 {
-  font-size: 1.25rem;
-  margin-bottom: 1rem;
+/* Classe pour le lien actif (celui de la page courante) */
+nav.main-menu a.active {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
 }
 
 /* ===============================
-   Formulaire (index.html)
+   Formulaires et contenu
    =============================== */
-form#pollForm {
-  max-width: 600px;
+.container {
+  max-width: 700px;
   margin: 0 auto 2rem;
-  padding: 1.5rem;
-  background: #fff;
-  border: 2px solid var(--red);
-  border-radius: 0;
+  padding: 0 1rem;
 }
 
-form#pollForm label {
+/* Champs & labels */
+label {
   display: block;
   font-weight: 700;
   margin-bottom: 0.25rem;
 }
-
-form#pollForm input[type="text"],
-form#pollForm input[type="date"],
-form#pollForm input[type="time"],
-form#pollForm textarea,
-form#pollForm select {
+input[type="text"],
+input[type="date"],
+input[type="time"],
+textarea,
+select {
   width: 100%;
-  padding: 10px;
-  font-size: 16px;
+  padding: 0.75rem;
+  font-size: 1rem;
   border: 1px solid var(--grey-border);
   border-radius: 6px;
-  font-family: var(--font);
   margin-bottom: 1rem;
 }
 
-form#pollForm textarea {
-  resize: vertical;
-}
-
+/* Groupes côte-à-côte */
 .inline-inputs {
   display: flex;
   gap: 1rem;
+  margin-bottom: 1rem;
 }
-
 .inline-inputs > div {
   flex: 1;
 }
 
 /* Boutons génériques */
-button {
-  font-family: var(--font);
-}
-
-button[type="submit"],
+button,
 button.btn {
+  font-family: var(--font);
   background: var(--red);
   color: #fff;
   border: none;
-  padding: 10px 20px;
-  font-size: 16px;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
   border-radius: 6px;
   cursor: pointer;
   margin-right: 1rem;
   margin-bottom: 1rem;
   transition: opacity 0.2s;
 }
-
-button[type="submit"]:hover,
+button:hover,
 button.btn:hover {
   opacity: 0.9;
 }
 
+/* Bouton secondaire (ajout d’option) */
 button#addOption {
   background: none;
   color: var(--red);
   border: 2px solid var(--red);
   border-radius: 6px;
-  padding: 8px 16px;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  font-size: 14px;
-  margin-bottom: 1.5rem;
 }
-
 button#addOption:hover {
   background: var(--red);
   color: #fff;
 }
 
-/* Message de succès / erreur */
+/* Messages */
 .message {
   margin-top: 0.5rem;
   font-weight: 600;
@@ -161,42 +141,36 @@ button#addOption:hover {
 }
 
 /* ===============================
-   Options drag & drop (SortableJS)
+   Drag & Drop des options
    =============================== */
 #optionsContainer {
   margin-bottom: 1rem;
 }
-
 .option-item {
   display: flex;
   align-items: center;
   margin-bottom: 0.5rem;
 }
-
 .option-item .drag-handle {
   cursor: grab;
-  margin-right: 0.5rem;
-  font-size: 1.2rem;
+  margin-right: 0.75rem;
+  font-size: 1.25rem;
   color: var(--grey-border);
 }
-
 .option-item .option-input {
   flex: 1;
-  padding: 8px;
+  padding: 0.75rem;
   border: 1px solid var(--grey-border);
   border-radius: 6px;
-  font-family: var(--font);
   margin-right: 0.5rem;
 }
-
 .option-item .remove-option {
   background: none;
   border: none;
+  font-size: 1.25rem;
   color: var(--red);
-  font-size: 1.2rem;
   cursor: pointer;
 }
-
 .drag-ghost {
   opacity: 0.5;
 }
@@ -205,37 +179,29 @@ button#addOption:hover {
    Résultats & analytics
    =============================== */
 .results-box {
-  max-width: 700px;
-  margin: 0 auto 2rem;
   background: #fff;
   border: 1px solid var(--grey-border);
   border-radius: 6px;
   padding: 1rem;
+  margin-top: 1.5rem;
 }
-
 .result {
   margin-bottom: 1rem;
 }
-
 .flex {
   display: flex;
   justify-content: space-between;
-  font-size: 15px;
 }
-
 .bar {
   height: 6px;
   background: var(--red);
   border-radius: 4px;
 }
-
 .meta {
-  font-size: 14px;
+  font-size: 0.9rem;
   color: #444;
   margin-top: 0.5rem;
 }
-
-/* Canvas Chart.js */
 canvas {
   display: block;
   max-width: 700px;
@@ -243,23 +209,22 @@ canvas {
 }
 
 /* ===============================
-   Classement (classement.html)
+   Classement
    =============================== */
 .user-entry {
   display: flex;
   justify-content: space-between;
   padding: 0.5rem 0;
   border-bottom: 1px solid var(--grey-border);
-  font-size: 15px;
+  font-size: 0.9rem;
 }
-
 .user-entry.header {
   font-weight: bold;
-  background: #f0f0f0;
   border-bottom: 2px solid #bbb;
+  background: #f0f0f0;
 }
 
-/* Export CSV bouton spécifique */
+/* Export CSV */
 #exportCSV {
   display: none;
 }
