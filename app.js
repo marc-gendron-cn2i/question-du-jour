@@ -1,160 +1,163 @@
 // app.js
+const form       = document.getElementById('pollForm');
+const siteEl     = document.getElementById('site');
+const dateDebut  = document.getElementById('dateDebut');
+const heureDebut = document.getElementById('heureDebut');
+const dateFin    = document.getElementById('dateFin');
+const heureFin   = document.getElementById('heureFin');
+const questionEl = document.getElementById('question');
+const optsCont   = document.getElementById('optionsContainer');
+const addOptBtn  = document.getElementById('addOption');
+const msgEl      = document.getElementById('successMessage');
 
-// --- Réglages de l'API ---
-const API_BASE = 'https://hx9jzqon0l.execute-api.us-east-1.amazonaws.com/prod';
+let currentPollId = null;
 
-// --- Récupération des éléments du DOM ---
-const form            = document.getElementById('pollForm');
-const siteEl          = document.getElementById('site');
-const dateDebutEl     = document.getElementById('dateDebut');
-const heureDebutEl    = document.getElementById('heureDebut');
-const dateFinEl       = document.getElementById('dateFin');
-const heureFinEl      = document.getElementById('heureFin');
-const questionEl      = document.getElementById('question');
-const optionsContainer= document.getElementById('optionsContainer');
-const addOptionBtn    = document.getElementById('addOption');
-const successMessage  = document.getElementById('successMessage');
-
-// --- Utilitaires UI ---
-function showMessage(txt, type='success') {
-  successMessage.textContent = txt;
-  successMessage.className = type; // 'success', 'error' ou 'info'
-}
-function clearMessage() {
-  showMessage('', '');
-}
-
-// --- Gestion des options de réponse ---
-function addOption(value = '') {
-  const idx = optionsContainer.children.length;
-  const wrapper = document.createElement('div');
-  wrapper.className = 'option-row';
-  wrapper.innerHTML = `
-    <input type="text" name="option" value="${value}" required placeholder="Option ${idx+1}" />
+// --- Helpers pour options ---
+function createOptionRow(value = '') {
+  const row = document.createElement('div');
+  row.className = 'option-row';
+  row.innerHTML = `
+    <span class="drag-handle" title="Glisser pour déplacer">☰</span>
+    <input type="text" name="option" value="${value}" required placeholder="Option" />
     <button type="button" class="remove-option" title="Supprimer">×</button>
   `;
-  optionsContainer.appendChild(wrapper);
-  wrapper.querySelector('.remove-option')
-    .addEventListener('click', () => {
-      optionsContainer.removeChild(wrapper);
-    });
-}
-function getOptions() {
-  return Array.from(
-    optionsContainer.querySelectorAll('input[name="option"]'),
-    inp => inp.value.trim()
-  ).filter(v => v);
-}
-
-// --- Réinitialiser le formulaire pour un nouveau sondage ---
-function clearFormForNewPoll() {
-  // Ne PAS réinitialiser dateDebutEl !
-  heureDebutEl.value = '';
-  dateFinEl.value    = '';
-  heureFinEl.value   = '';
-  questionEl.value   = '';
-  optionsContainer.innerHTML = '';
-  showMessage(`Pas de sondage pour cette date`, 'info');
-}
-
-// --- Charger un sondage existant ---
-async function loadExistingPoll() {
-  clearMessage();
-  const site = siteEl.value;
-  const date = dateDebutEl.value;
-  if (!site || !date) return;
-
-  const pollId = `${site}_${date}`;
-  try {
-    const resp = await fetch(`${API_BASE}/poll/${pollId}`, { method: 'GET' });
-    if (resp.status === 404) {
-      clearFormForNewPoll();
-      return;
+  // suppression
+  row.querySelector('.remove-option').onclick = () => {
+    if (optsCont.children.length > 2) {
+      row.remove();
+      updateRemoveState();
     }
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
-
-    // Remplir le formulaire avec les données reçues
-    // startDateTime / endDateTime = "2025-06-17T02:00:00Z"
-    const [ sDate, sTime ] = data.startDateTime.split('T');
-    const [ eDate, eTime ] = data.endDateTime.split('T');
-    dateDebutEl.value = sDate;
-    heureDebutEl.value = sTime.slice(0,5);
-    dateFinEl.value   = eDate;
-    heureFinEl.value  = eTime.slice(0,5);
-    questionEl.value  = data.question;
-    optionsContainer.innerHTML = '';
-    data.options.forEach(opt => addOption(opt));
-
-    showMessage(`Sondage chargé (${data.options.length} options)`, 'info');
-
-  } catch (err) {
-    console.error('loadExistingPoll:', err);
-    showMessage(`Erreur de chargement du sondage`, 'error');
-  }
-}
-
-// --- Soumettre le formulaire (création ou mise à jour) ---
-async function handleSubmit(evt) {
-  evt.preventDefault();
-  clearMessage();
-
-  const site = siteEl.value;
-  const dateDebut = dateDebutEl.value;
-  const heureDeb = heureDebutEl.value;
-  const dateFin  = dateFinEl.value;
-  const heureFin = heureFinEl.value;
-  const question= questionEl.value.trim();
-  const options = getOptions();
-
-  // Validation basique
-  if (!site || !dateDebut || !heureDeb || !dateFin || !heureFin || !question || options.length < 2) {
-    showMessage('Veuillez compléter tous les champs et au moins 2 options.', 'error');
-    return;
-  }
-
-  // Construire le payload
-  const payload = {
-    pollId: `${site}_${dateDebut}`,
-    site,
-    question,
-    options,
-    votes: Array(options.length).fill(0),
-    startDateTime: new Date(`${dateDebut}T${heureDeb}:00Z`).toISOString(),
-    endDateTime:   new Date(`${dateFin}T${heureFin}:00Z`).toISOString()
   };
-
-  try {
-    const resp = await fetch(`${API_BASE}/poll`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    showMessage('Sondage créé / mis à jour avec succès', 'success');
-    // On recharge pour refléter l’état
-    loadExistingPoll();
-
-  } catch (err) {
-    console.error('handleSubmit:', err);
-    showMessage(`Erreur lors de l’enregistrement`, 'error');
-  }
+  return row;
 }
 
-// --- Initialisation au chargement de la page ---
-window.addEventListener('DOMContentLoaded', () => {
-  // Par défaut, date de début = demain
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  dateDebutEl.value = tomorrow.toISOString().split('T')[0];
-  dateFinEl.value   = dateDebutEl.value;
+function updateRemoveState() {
+  // empêcher de supprimer si on est à 2 options
+  const canRemove = optsCont.children.length > 2;
+  optsCont.querySelectorAll('.remove-option')
+    .forEach(btn => btn.disabled = !canRemove);
+}
 
-  // 1) lancer la vérification pour la date par défaut
-  loadExistingPoll();
+// initial add 2 options
+function ensureMinOptions() {
+  while (optsCont.children.length < 2) {
+    optsCont.appendChild(createOptionRow());
+  }
+  updateRemoveState();
+}
+
+// --- Drag & Drop avec SortableJS ---
+import Sortable from 'sortablejs';
+new Sortable(optsCont, {
+  handle: '.drag-handle',
+  animation: 150,
+  ghostClass: 'drag-ghost'
 });
 
-// --- Événements utilisateur ---
-siteEl.addEventListener('change',    loadExistingPoll);
-dateDebutEl.addEventListener('change',loadExistingPoll);
-addOptionBtn.addEventListener('click', () => addOption());
-form.addEventListener('submit',       handleSubmit);
+// --- Gestion de l’interface ---
+addOptBtn.onclick = () => {
+  if (optsCont.children.length < 8) {
+    optsCont.appendChild(createOptionRow());
+    updateRemoveState();
+  }
+};
+
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  msgEl.textContent = '';
+  // Construire payload
+  const payload = {
+    site: siteEl.value,
+    startDateTime: dateDebut.value + 'T' + heureDebut.value + ':00Z',
+    endDateTime:   dateFin.value   + 'T' + heureFin.value   + ':00Z',
+    question: questionEl.value.trim(),
+    options: [...optsCont.querySelectorAll('input[name="option"]')]
+      .map(i => i.value.trim())
+  };
+  // POST ou PUT vers createOrUpdatePoll
+  const method = currentPollId ? 'PUT' : 'POST';
+  const url    = currentPollId
+    ? `/poll/${currentPollId}`
+    : '/poll';
+  try {
+    const resp = await fetch(url, {
+      method,
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify(payload),
+      credentials: 'include'
+    });
+    if (!resp.ok) throw new Error(resp.statusText);
+    const data = await resp.json();
+    currentPollId = data.pollId;
+    msgEl.textContent = '✔️ Enregistré avec succès';
+    // Après création, verrouiller dateDebut
+    dateDebut.readOnly = true;
+  } catch (err) {
+    msgEl.textContent = '❌ Erreur: ' + err.message;
+  }
+});
+
+// --- Chargement automatique si sondage existe à la date par défaut ---
+async function loadExisting() {
+  msgEl.textContent = '';
+  currentPollId = `${siteEl.value}_${dateDebut.value}`;
+  try {
+    const resp = await fetch(`/poll/${currentPollId}`, {
+      credentials: 'include'
+    });
+    if (resp.status === 404) {
+      // pas d’existant → nouvelle création
+      form.reset();
+      ensureMinOptions();
+      dateDebut.readOnly = false;
+      return;
+    }
+    if (!resp.ok) throw new Error(resp.statusText);
+    const poll = await resp.json();
+    // remplir form
+    siteEl.value      = poll.site;
+    const [sDate, sTime] = poll.startDateTime.split('T');
+    dateDebut.value    = sDate;
+    heureDebut.value   = sTime.slice(0,5);
+    const [eDate, eTime] = poll.endDateTime.split('T');
+    dateFin.value      = eDate;
+    heureFin.value     = eTime.slice(0,5);
+    questionEl.value   = poll.question;
+    // options
+    optsCont.innerHTML = '';
+    poll.options.forEach(opt => {
+      optsCont.appendChild(createOptionRow(opt));
+    });
+    ensureMinOptions();
+    // verrouiller dateDebut si terminé
+    const now = new Date();
+    const ended = now >= new Date(poll.endDateTime);
+    if (ended) {
+      dateDebut.readOnly = false;   // on veut toujours pouvoir corriger dateDebut
+      // mais on verrouille tout le reste (si souhaité, sinon commenter)
+      dateFin.readOnly    = true;
+      heureDebut.readOnly = true;
+      heureFin.readOnly   = true;
+      questionEl.readOnly = true;
+      optsCont.querySelectorAll('input').forEach(i => i.readOnly = true);
+      addOptBtn.disabled = true;
+    }
+  } catch (err) {
+    console.error('loadExisting:', err);
+  }
+}
+
+// --- Initialisation des dates ---
+window.addEventListener('DOMContentLoaded', () => {
+  // date par défaut = demain
+  const today = new Date();
+  today.setDate(today.getDate() + 1);
+  const isoDate = today.toISOString().split('T')[0];
+  dateDebut.value = isoDate;
+  dateFin.value   = isoDate;
+  ensureMinOptions();
+  loadExisting();
+  // quand on change la dateDebut, re-charger
+  dateDebut.addEventListener('change', loadExisting);
+  siteEl.addEventListener('change', loadExisting);
+});
