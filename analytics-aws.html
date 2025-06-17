@@ -16,6 +16,14 @@
     h1 {
       color: #d51D2C;
     }
+    .inline-inputs {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .inline-inputs > div {
+      flex: 1;
+    }
     label {
       font-weight: 700;
       display: block;
@@ -28,15 +36,6 @@
       border: 1px solid #ccc;
       width: 100%;
       box-sizing: border-box;
-      font-family: 'Red Hat Display', sans-serif;
-    }
-    .inline-inputs {
-      display: flex;
-      gap: 1rem;
-      margin-bottom: 1rem;
-    }
-    .inline-inputs > div {
-      flex: 1;
     }
     .btn {
       background: #d51D2C;
@@ -55,11 +54,6 @@
       padding: 1rem;
       margin-top: 1.5rem;
     }
-    .bar {
-      height: 6px;
-      background: #d51D2C;
-      border-radius: 4px;
-    }
     .result {
       margin-bottom: 1rem;
     }
@@ -68,16 +62,14 @@
       justify-content: space-between;
       font-size: 15px;
     }
-    .meta {
-      font-size: 14px;
-      color: #444;
-      margin-top: 0.5rem;
+    .bar {
+      height: 6px;
+      background: #d51D2C;
+      border-radius: 4px;
     }
-    /* Menu de navigation */
     nav.main-menu {
       text-align: center;
       margin-bottom: 2rem;
-      font-family: 'Red Hat Display', sans-serif;
     }
     nav.main-menu a {
       display: inline-block;
@@ -133,13 +125,12 @@
   <canvas id="hourlyChart" height="120" style="margin-top:2rem;"></canvas>
 
   <script>
-    const apiBase = 'https://hx9jzqon0l.execute-api.us-east-1.amazonaws.com/prod';
-
-    const siteEl = document.getElementById("site");
-    const dateEl = document.getElementById("date");
-    const loadBtn = document.getElementById("loadData");
+    const API_BASE = "https://hx9jzqon0l.execute-api.us-east-1.amazonaws.com/prod";
+    const siteEl    = document.getElementById("site");
+    const dateEl    = document.getElementById("date");
+    const loadBtn   = document.getElementById("loadData");
     const resultsContainer = document.getElementById("resultsContainer");
-    const ctx = document.getElementById("hourlyChart").getContext("2d");
+    const ctx       = document.getElementById("hourlyChart").getContext("2d");
     let chart;
 
     async function loadResults() {
@@ -148,84 +139,79 @@
       if (!site || !date) return;
 
       const pollId = `${site}_${date}`;
-      // 1) on récupère les métadonnées de la question (getPoll)
-      let pollData;
-      try {
-        const resp = await fetch(`${apiBase}/poll/${pollId}`, {
-          credentials: 'omit'
-        });
-        if (!resp.ok) throw new Error(resp.statusText);
-        pollData = await resp.json();
-      } catch (err) {
-        resultsContainer.innerHTML = "<div style='color:#888;'>Aucun sondage trouvé pour cette date et ce site.</div>";
-        if (chart) chart.destroy();
-        return;
-      }
-
-      const total = pollData.votes.reduce((a,b) => a+b, 0);
-
-      // affiche question et résultats globaux
-      resultsContainer.innerHTML = `
-        <h3 style="margin-bottom:1rem;">${pollData.question}</h3>
-        ${pollData.options.map((opt,i)=> {
-          const pct = total ? Math.round(pollData.votes[i]/total*100) : 0;
-          return `
-            <div class="result">
-              <div class="flex"><span>${opt}</span><span><b>${pct}%</b></span></div>
-              <div style="background:#eee;border-radius:4px;height:6px;overflow:hidden;">
-                <div class="bar" style="width:${pct}%;"></div>
-              </div>
-            </div>`;
-        }).join("")}
-        <div class="meta"><b>${total}</b> répondant${total>1?'s':''}</div>
-      `;
-
-      // 2) on récupère l’analyse horaire (getHourlyStats)
-      let hours;
-      try {
-        const resp2 = await fetch(`${apiBase}/hourly?site=${site}&date=${date}`, {
-          credentials: 'omit'
-        });
-        if (!resp2.ok) throw new Error(resp2.statusText);
-        hours = await resp2.json();
-      } catch (err) {
-        console.error('Erreur horaire :', err);
-        hours = Array(24).fill(0);
-      }
-
-      // 3) tracer le graphique
-      const labels = Array.from({length:24},(_,h)=>`${h.toString().padStart(2,'0')}h`);
-      const dataChart = {
-        labels,
-        datasets: [{
-          label: "Votes par heure",
-          data: hours,
-          fill: false,
-          tension: 0.2,
-          borderColor: "#d51D2C",
-          backgroundColor: "#d51D2C"
-        }]
-      };
+      resultsContainer.innerHTML = "<div style='color:#888;'>Chargement…</div>";
       if (chart) chart.destroy();
-      chart = new Chart(ctx, {
-        type: 'line',
-        data: dataChart,
-        options: {
-          scales: {
-            y: { beginAtZero: true, title: { display: true, text: "Nombre de votes" } },
-            x: { title: { display: true, text: "Heure locale" } }
+
+      try {
+        // 1) Récupérer la question et les résultats totaux
+        const pollResp = await fetch(`${API_BASE}/poll/${pollId}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
+        });
+        if (!pollResp.ok) throw new Error("poll " + pollResp.status);
+        const pollData = await pollResp.json();
+        // Affichage question + résultats
+        const total = pollData.votes.reduce((a,b)=>a+b,0);
+        resultsContainer.innerHTML = `
+          <h3 style="margin-bottom:1rem;">${pollData.question}</h3>
+          ${pollData.options.map((opt,i)=>{
+            const pct = total?Math.round(pollData.votes[i]/total*100):0;
+            return `
+              <div class="result">
+                <div class="flex">
+                  <span>${opt}</span><span><b>${pct}%</b></span>
+                </div>
+                <div style="background:#eee;border-radius:4px;height:6px;">
+                  <div class="bar" style="width:${pct}%;"></div>
+                </div>
+              </div>`;
+          }).join("")}
+          <div class="flex" style="font-size:14px;"><span>Total</span><b>${total}</b></div>
+        `;
+
+        // 2) Récupérer l’histogramme horaire
+        const hourlyResp = await fetch(`${API_BASE}/hourly?site=${site}&date=${date}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
+        });
+        if (!hourlyResp.ok) throw new Error("hourly " + hourlyResp.status);
+        const hours = await hourlyResp.json();
+        const labels = Array.from({length:24},(_,h)=>`${h.toString().padStart(2,'0')}h`);
+        // Dessiner le graphique
+        chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [{
+              label: "Votes par heure (locale)",
+              data: hours,
+              fill: false,
+              tension: 0.2,
+              borderColor: "#d51D2C",
+              backgroundColor: "#d51D2C"
+            }]
+          },
+          options: {
+            scales: {
+              y: { beginAtZero:true, title:{display:true,text:"Nombre de votes"} },
+              x: { title:{display:true,text:"Heure"} }
+            }
           }
-        }
-      });
+        });
+
+      } catch(err) {
+        console.error("Erreur horaire :", err);
+        resultsContainer.innerHTML = `<div style="color:red;">Erreur au chargement.</div>`;
+      }
     }
 
     loadBtn.addEventListener("click", loadResults);
 
-    // initialisation de la date à aujourd’hui
-    window.addEventListener('DOMContentLoaded', () => {
-      const today = new Date().toISOString().split('T')[0];
+    // Date par défaut = aujourd'hui
+    window.addEventListener('DOMContentLoaded', ()=>{
+      const today = new Date().toISOString().slice(0,10);
       dateEl.value = today;
-      dateEl.max = today;
+      dateEl.max   = today;
     });
   </script>
 </body>
