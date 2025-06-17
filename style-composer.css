@@ -1,0 +1,95 @@
+/* Reset basique */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body, html { height: 100%; font-family: 'Red Hat Display', sans-serif; }
+
+/* 1) Layout général en flex */
+.dashboard {
+  display: flex;
+  height: 100vh;
+}
+
+/* 1a) Sidebar */
+.sidebar {
+  width: 250px;
+  background: #f5f7fa;
+  border-right: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar .logo {
+  padding: 1.5rem;
+  font-size: 1.25rem;
+  border-bottom: 1px solid #ddd;
+}
+.side-nav ul {
+  list-style: none;
+}
+.side-nav li + li { margin-top: .5rem; }
+.side-nav a {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  color: #333;
+  text-decoration: none;
+  font-weight: 500;
+  transition: background .2s;
+}
+.side-nav a svg { margin-right: .75rem; fill: #666; }
+.side-nav a:hover {
+  background: #e1e5eb;
+}
+
+/* 2) Zone principale */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 2a) Header */
+.header {
+  height: 60px;
+  background: #2e3a4e;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+}
+.header select {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 1rem;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+}
+.btn-logout {
+  margin-left: 1rem;
+  background: none;
+  border: 1px solid rgba(255,255,255,.6);
+  color: white;
+  padding: 0.35rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+}
+.btn-logout:hover {
+  background: rgba(255,255,255,.2);
+  border-color: white;
+}
+
+/* 2b) Contenu */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  background: #fff;
+}
+.content h1 {
+  color: #d51D2C;
+  margin-bottom: 1.5rem;
+}
+/* etc. : réutilisez vos styles existants pour le formulaire */
