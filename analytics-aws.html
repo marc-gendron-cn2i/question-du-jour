@@ -6,7 +6,77 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    /* ... (votre CSS existant) ... */
+    body {
+      font-family: 'Red Hat Display', sans-serif;
+      max-width: 700px;
+      margin: 2rem auto;
+      padding: 1rem;
+      background: #f8f8f8;
+    }
+    h1 {
+      color: #d51D2C;
+    }
+    label {
+      font-weight: 700;
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+    select, input[type="date"] {
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      width: 100%;
+      box-sizing: border-box;
+      font-family: 'Red Hat Display', sans-serif;
+    }
+    .inline-inputs {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .inline-inputs > div {
+      flex: 1;
+    }
+    .btn {
+      background: #d51D2C;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-bottom: 1rem;
+    }
+    .results-box {
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-top: 1.5rem;
+    }
+    /* Menu de navigation */
+    nav.main-menu {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    nav.main-menu a {
+      display: inline-block;
+      margin: 0 0.5rem;
+      padding: 0.5rem 1rem;
+      color: #d51D2C;
+      text-decoration: none;
+      font-weight: 600;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+    nav.main-menu a:hover,
+    nav.main-menu a:focus {
+      background: #d51D2C;
+      color: #fff;
+      border-color: #d51D2C;
+    }
   </style>
 </head>
 <body>
@@ -20,7 +90,14 @@
   <div class="inline-inputs">
     <div>
       <label for="site">Site</label>
-      <select id="site">…</select>
+      <select id="site">
+        <option value="lesoleil">Le Soleil</option>
+        <option value="ledroit">Le Droit</option>
+        <option value="lenouvelliste">Le Nouvelliste</option>
+        <option value="lequotidien">Le Quotidien</option>
+        <option value="latribune">La Tribune</option>
+        <option value="lavoixdelest">La Voix de l'Est</option>
+      </select>
     </div>
     <div>
       <label for="date">Date</label>
@@ -38,8 +115,7 @@
 
   <script type="module">
   window.addEventListener('DOMContentLoaded', async () => {
-    console.log("DOM chargé → j'initialise le module analytics");
-
+    // Imports Firebase
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js';
     import {
       getFirestore,
@@ -51,12 +127,19 @@
       getDocs
     } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js';
 
-    // --- Initialisation Firebase ---
-    const firebaseConfig = { /*…*/ };
+    // Config Firebase
+    const firebaseConfig = {
+      apiKey: "...",
+      authDomain: "...",
+      projectId: "...",
+      storageBucket: "...",
+      messagingSenderId: "...",
+      appId: "..."
+    };
     const app = initializeApp(firebaseConfig);
     const db  = getFirestore(app);
 
-    // --- Récupération des éléments ---
+    // Eléments du DOM
     const siteEl    = document.getElementById("site");
     const dateEl    = document.getElementById("date");
     const loadBtn   = document.getElementById("loadData");
@@ -65,16 +148,72 @@
     let chart;
 
     async function loadResults() {
-      console.log("[analytics] Bouton cliqué – chargement en cours");
+      console.log("[analytics] Chargement des données");
       const site = siteEl.value, date = dateEl.value;
       if (!site || !date) return;
       const pollId = `${site}_${date}`;
-      // … (reste de votre fonction loadResults inchangé) …
+
+      // Récupère le sondage
+      const pollSnap = await getDoc(doc(db, "polls", pollId));
+      if (!pollSnap.exists()) {
+        resultsContainer.innerHTML = "<div style='color:#888;'>Aucun sondage trouvé.</div>";
+        if (chart) chart.destroy();
+        return;
+      }
+
+      const pollData = pollSnap.data();
+      const total = pollData.votes.reduce((a,b)=>a+b,0);
+      // Affiche résultats
+      resultsContainer.innerHTML = `
+        <h3 style="margin-bottom:1rem;">${pollData.question}</h3>
+        ${pollData.options.map((opt,i)=>{
+          const pct = total?Math.round((pollData.votes[i]/total)*100):0;
+          return `
+            <div style="margin-bottom:1rem;">
+              <div style="display:flex;justify-content:space-between">
+                <span>${opt}</span><span><b>${pct}%</b></span>
+              </div>
+              <div style="background:#eee;border-radius:4px;height:6px;overflow:hidden">
+                <div style="width:${pct}%;height:6px;background:#d51D2C"></div>
+              </div>
+            </div>`;
+        }).join("")}
+        <div style="margin-top:8px;font-size:14px;">
+          <b>${total}</b> répondant${total>1?'s':''}
+        </div>
+      `;
+
+      // Prépare le graphique horaire
+      const voteSnap = await getDocs(
+        query(collection(db, "votes"), where("date","==",pollId))
+      );
+      const hourMap = Array(24).fill(0);
+      voteSnap.forEach(d=>{
+        const ts = d.data().timestamp?.toDate();
+        if (!ts) return;
+        const h = parseInt(new Intl.DateTimeFormat('fr-FR',{
+          hour:'2-digit',hour12:false,timeZone:'America/Toronto'
+        }).format(ts),10);
+        if (!isNaN(h)) hourMap[h]++;
+      });
+      const labels = Array.from({length:24},(_,h)=>`${h.toString().padStart(2,'0')}h`);
+      const dataChart = { labels, datasets:[{
+        label:"Votes par heure", data:hourMap,
+        fill:false, tension:0.2, borderColor:"#d51D2C", backgroundColor:"#d51D2C"
+      }]};
+
+      if (chart) chart.destroy();
+      chart = new Chart(ctx,{ type:'line', data:dataChart, options:{
+        scales:{ y:{ beginAtZero:true, title:{display:true,text:"Nombre de votes"}},
+                 x:{ title:{display:true,text:"Heure"}}
+        }
+      }});
     }
 
     loadBtn.addEventListener("click", loadResults);
-    // Valeurs par défaut pour la date
-    const today = new Date(), toISO = d => d.toISOString().split('T')[0];
+
+    // Date par défaut = aujourd’hui
+    const today = new Date(), toISO = d=>d.toISOString().split('T')[0];
     dateEl.value = toISO(today);
     dateEl.max   = toISO(today);
   });
