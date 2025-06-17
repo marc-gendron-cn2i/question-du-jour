@@ -13,7 +13,11 @@
       background: #f8f8f8;
     }
     h1 { color: #d51D2C; }
-    label { font-weight: 700; margin-top:1rem; display:block; }
+    label {
+      font-weight:700;
+      margin-top:1rem;
+      display:block;
+    }
     .row { display:flex; gap:1rem; }
     select, input[type="date"] {
       padding:10px; font-size:16px; border-radius:6px; border:1px solid #ccc;
@@ -24,7 +28,7 @@
       padding:1rem; margin-top:1.5rem;
     }
     .user-entry {
-      padding:0.5rem 0; border-bottom:1px solid #eee;
+      padding:.5rem 0; border-bottom:1px solid #eee;
       display:flex; justify-content:space-between; font-size:15px;
     }
     .user-entry.header {
@@ -34,13 +38,12 @@
       background:#d51D2C; color:white; border:none; padding:10px 16px;
       border-radius:6px; cursor:pointer; font-size:16px; margin-top:1rem;
     }
-    /* Menu de navigation */
     nav.main-menu { text-align:center; margin-bottom:2rem; }
     nav.main-menu a {
-      display:inline-block; margin:0 0.5rem; padding:0.5rem 1rem;
+      display:inline-block; margin:0 .5rem; padding:.5rem 1rem;
       color:#d51D2C; text-decoration:none; font-weight:600;
       border:2px solid transparent; border-radius:6px;
-      transition:background 0.2s,color 0.2s,border-color 0.2s;
+      transition:background .2s,color .2s,border-color .2s;
     }
     nav.main-menu a:hover,
     nav.main-menu a:focus {
@@ -90,127 +93,118 @@
   <button class="btn" id="loadMore" style="display:none;">Afficher 25 de plus</button>
 
   <script type="module">
-  window.addEventListener('DOMContentLoaded', async () => {
-    // Imports Firebase
+    // 1. Imports
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js';
     import {
-      getFirestore, collection, getDocs
+      getFirestore,
+      collection,
+      getDocs
     } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js';
 
-    // Config Firebase
+    // 2. Config Firebase
     const firebaseConfig = {
-      apiKey: "...",
-      authDomain: "...",
-      projectId: "...",
-      storageBucket: "...",
-      messagingSenderId: "...",
-      appId: "..."
+      apiKey: "AIzaSy…",
+      authDomain: "…firebaseapp.com",
+      projectId: "…",
+      storageBucket: "…",
+      messagingSenderId: "…",
+      appId: "1:…:web:…"
     };
     const app = initializeApp(firebaseConfig);
     const db  = getFirestore(app);
 
-    // Eléments du DOM
-    const siteEl    = document.getElementById("site");
-    const startEl   = document.getElementById("start");
-    const endEl     = document.getElementById("end");
-    const loadBtn   = document.getElementById("loadRanking");
-    const loadMoreBtn = document.getElementById("loadMore");
-    const exportBtn   = document.getElementById("exportCSV");
-    const rankingContainer = document.getElementById("rankingContainer");
+    // 3. DOM + logique
+    document.addEventListener('DOMContentLoaded', () => {
+      const siteEl   = document.getElementById("site");
+      const startEl  = document.getElementById("start");
+      const endEl    = document.getElementById("end");
+      const loadBtn  = document.getElementById("loadRanking");
+      const moreBtn  = document.getElementById("loadMore");
+      const exportBtn= document.getElementById("exportCSV");
+      const container= document.getElementById("rankingContainer");
+      let fullRanking = [], displayIndex = 0;
 
-    let fullRanking = [], displayIndex = 0;
+      async function fetchRanking() {
+        container.innerHTML = "<div style='color:#888;'>Chargement…</div>";
+        moreBtn.style.display = 'none';
+        exportBtn.style.display = 'none';
+        fullRanking = []; displayIndex = 0;
 
-    async function fetchRanking() {
-      console.log("[classement] fetchRanking()");
-      rankingContainer.innerHTML = "<div style='color:#888;'>Chargement…</div>";
-      loadMoreBtn.style.display = "none";
-      exportBtn.style.display = "none";
-      fullRanking = [];
-      displayIndex = 0;
+        const site  = siteEl.value;
+        const start = startEl.value;
+        const end   = endEl.value;
 
-      const site  = siteEl.value;
-      const start = startEl.value;
-      const end   = endEl.value;
+        const voteSnap = await getDocs(collection(db, "votes_by_arcid"));
+        const filtered = [];
+        voteSnap.forEach(docSnap => {
+          const d = docSnap.data();
+          if (!d.date) return;
+          let [docSite, dateOnly] = d.date.split('_');
+          if (docSite === site && dateOnly >= start && dateOnly <= end && d.arcId) {
+            filtered.push(d.arcId);
+          }
+        });
 
-      const voteSnap = await getDocs(collection(db, "votes_by_arcid"));
-      const filtered = [];
+        const counts = {};
+        filtered.forEach(id => counts[id] = (counts[id]||0) + 1);
+        fullRanking = Object.entries(counts)
+          .sort((a,b)=>b[1]-a[1])
+          .map(([id,c])=>({id,count:c}));
 
-      voteSnap.forEach(docSnap => {
-        const d = docSnap.data();
-        // extraction site+date…
-        let docSite, dateOnly;
-        if (typeof d.date.toDate === 'function') {
-          const jsDate = d.date.toDate();
-          dateOnly = jsDate.toISOString().split('T')[0];
-        } else if (typeof d.date === 'string') {
-          [docSite, dateOnly] = d.date.split('_');
-        }
-        if (!docSite && d.site) docSite=d.site;
-        if (docSite===site && dateOnly>=start && dateOnly<=end && d.arcId) {
-          filtered.push(d.arcId);
-        }
-      });
-
-      const counts = {};
-      filtered.forEach(id => counts[id] = (counts[id]||0)+1);
-      fullRanking = Object.entries(counts)
-        .sort((a,b)=>b[1]-a[1])
-        .map(([id,count])=>({id,count}));
-
-      renderMore();
-      if (fullRanking.length>0) exportBtn.style.display="inline-block";
-    }
-
-    function renderMore() {
-      const slice = fullRanking.slice(displayIndex, displayIndex+25);
-      if (displayIndex===0) {
-        rankingContainer.innerHTML = `
-          <div class="user-entry header">
-            <span>ArcID</span><span>Votes</span>
-          </div>`;
+        renderMore();
+        if (fullRanking.length) exportBtn.style.display = 'inline-block';
       }
-      slice.forEach(({id,count})=>{
-        const div=document.createElement("div");
-        div.className="user-entry";
-        div.innerHTML=`<span>${id}</span><span><b>${count}</b></span>`;
-        rankingContainer.appendChild(div);
-      });
-      displayIndex += slice.length;
-      loadMoreBtn.style.display = displayIndex<fullRanking.length?"block":"none";
-    }
 
-    function exportToCSV() {
-      if (!fullRanking.length) return;
-      const escapeV = v=>`"${String(v).replace(/"/g,'""')}"`;
-      const lines = [
-        ['ArcID','Votes'].join(','),
-        ...fullRanking.map(({id,count})=>[escapeV(id),escapeV(count)].join(','))
-      ];
-      const blob = new Blob([`\uFEFF${lines.join('\r\n')}`], { type:'text/csv' });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement("a");
-      a.href     = url;
-      a.download = "classement.csv";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    }
+      function renderMore() {
+        const slice = fullRanking.slice(displayIndex, displayIndex+25);
+        if (displayIndex === 0) {
+          container.innerHTML = `
+            <div class="user-entry header">
+              <span>ArcID</span><span>Votes</span>
+            </div>`;
+        }
+        slice.forEach(({id,count})=>{
+          const div = document.createElement('div');
+          div.className = 'user-entry';
+          div.innerHTML = `<span>${id}</span><span><b>${count}</b></span>`;
+          container.appendChild(div);
+        });
+        displayIndex += slice.length;
+        moreBtn.style.display = (displayIndex < fullRanking.length) ? 'block' : 'none';
+      }
 
-    loadBtn.addEventListener("click", fetchRanking);
-    loadMoreBtn.addEventListener("click", renderMore);
-    exportBtn.addEventListener("click", exportToCSV);
+      function exportToCSV() {
+        if (!fullRanking.length) return;
+        const escapeVal = v=>`"${String(v).replace(/"/g,'""')}"`;
+        const lines = [
+          ['ArcID','Votes'].map(escapeVal).join(','),
+          ...fullRanking.map(({id,count})=>[escapeVal(id),escapeVal(count)].join(','))
+        ];
+        const blob = new Blob([`\uFEFF${lines.join('\r\n')}`],{type:'text/csv;charset=utf-8;'});
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = 'classement.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
 
-    // Initialisation automatique des dates
-    const today = new Date();
-    const endDate = new Date(today); endDate.setDate(endDate.getDate()-1);
-    const startDate = new Date(today); startDate.setDate(startDate.getDate()-30);
-    const toISO = d=>d.toISOString().split('T')[0];
-    endEl.value   = toISO(endDate);
-    startEl.value = toISO(startDate);
-    endEl.max     = toISO(endDate);
-    startEl.max   = toISO(endDate);
-  });
+      loadBtn.addEventListener('click', fetchRanking);
+      moreBtn.addEventListener('click', renderMore);
+      exportBtn.addEventListener('click', exportToCSV);
+
+      // Dates par défaut
+      const today = new Date();
+      const endDate = new Date(today); endDate.setDate(endDate.getDate()-1);
+      const startDate = new Date(today); startDate.setDate(startDate.getDate()-30);
+      const toISO = d=>d.toISOString().split('T')[0];
+      endEl.value = toISO(endDate);
+      startEl.value = toISO(startDate);
+      endEl.max   = toISO(endDate);
+      startEl.max = toISO(endDate);
+    });
   </script>
 </body>
 </html>
