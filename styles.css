@@ -1,95 +1,265 @@
-body {
-  font-family: 'Red Hat Display', sans-serif;
-  background: #f8f8f8;
-  margin: 3rem auto;
-  max-width: 600px;
-  padding: 1rem;
+/* ===============================
+   Police & couleurs de base
+   =============================== */
+@import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&display=swap');
+
+:root {
+  --red: #d51D2C;
+  --grey-bg: #f8f8f8;
+  --grey-border: #ccc;
+  --font: 'Red Hat Display', sans-serif;
 }
-h1 {
-  color: #d51D2C;
-  text-align: center;
-}
-label {
-  display: block;
-  margin-top: 1rem;
-  font-weight: 600;
-}
-.inline-inputs {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-.inline-inputs > div {
-  flex: 1;
-}
-input, textarea, select {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-family: inherit;
+
+* {
   box-sizing: border-box;
 }
-.option-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font);
+  background: var(--grey-bg);
+  color: #000;
+  line-height: 1.5;
 }
-.drag-handle {
-  cursor: grab;
-  font-size: 1.2rem;
-  color: #888;
-  padding: 0 0.25rem;
-}
-.option-input {
-  flex: 1;
-}
-.remove-option {
-  background: transparent;
-  border: none;
-  font-size: 1.2rem;
-  color: #d51D2C;
-  cursor: pointer;
-}
-button {
-  margin-top: 1.5rem;
-  background: #d51D2C;
-  color: #fff;
-  border: none;
-  padding: 10px 20px;
-  font-size: 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-}
-button:hover {
-  background: #c21a26;
-}
-.message {
-  margin-top: 1rem;
-  font-weight: 600;
-  color: #d51D2C;
-}
+
+/* ===============================
+   Navigation principale
+   =============================== */
 nav.main-menu {
   text-align: center;
-  margin-bottom: 2rem;
-  font-family: 'Red Hat Display', sans-serif;
+  margin: 1.5rem 0;
 }
+
 nav.main-menu a {
   display: inline-block;
   margin: 0 0.5rem;
   padding: 0.5rem 1rem;
-  color: #d51D2C;
+  color: var(--red);
   text-decoration: none;
   font-weight: 600;
   border: 2px solid transparent;
   border-radius: 6px;
   transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
+
 nav.main-menu a:hover,
 nav.main-menu a:focus {
-  background: #d51D2C;
+  background: var(--red);
   color: #fff;
-  border-color: #d51D2C;
+  border-color: var(--red);
 }
 
+/* ===============================
+   Titres
+   =============================== */
+h1, h3 {
+  color: var(--red);
+  margin-top: 0;
+}
+
+h1 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+h3 {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+/* ===============================
+   Formulaire (index.html)
+   =============================== */
+form#pollForm {
+  max-width: 600px;
+  margin: 0 auto 2rem;
+  padding: 1.5rem;
+  background: #fff;
+  border: 2px solid var(--red);
+  border-radius: 0;
+}
+
+form#pollForm label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+form#pollForm input[type="text"],
+form#pollForm input[type="date"],
+form#pollForm input[type="time"],
+form#pollForm textarea,
+form#pollForm select {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid var(--grey-border);
+  border-radius: 6px;
+  font-family: var(--font);
+  margin-bottom: 1rem;
+}
+
+form#pollForm textarea {
+  resize: vertical;
+}
+
+.inline-inputs {
+  display: flex;
+  gap: 1rem;
+}
+
+.inline-inputs > div {
+  flex: 1;
+}
+
+/* Boutons génériques */
+button {
+  font-family: var(--font);
+}
+
+button[type="submit"],
+button.btn {
+  background: var(--red);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  font-size: 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-right: 1rem;
+  margin-bottom: 1rem;
+  transition: opacity 0.2s;
+}
+
+button[type="submit"]:hover,
+button.btn:hover {
+  opacity: 0.9;
+}
+
+button#addOption {
+  background: none;
+  color: var(--red);
+  border: 2px solid var(--red);
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 1.5rem;
+}
+
+button#addOption:hover {
+  background: var(--red);
+  color: #fff;
+}
+
+/* Message de succès / erreur */
+.message {
+  margin-top: 0.5rem;
+  font-weight: 600;
+  color: var(--red);
+}
+
+/* ===============================
+   Options drag & drop (SortableJS)
+   =============================== */
+#optionsContainer {
+  margin-bottom: 1rem;
+}
+
+.option-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.option-item .drag-handle {
+  cursor: grab;
+  margin-right: 0.5rem;
+  font-size: 1.2rem;
+  color: var(--grey-border);
+}
+
+.option-item .option-input {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid var(--grey-border);
+  border-radius: 6px;
+  font-family: var(--font);
+  margin-right: 0.5rem;
+}
+
+.option-item .remove-option {
+  background: none;
+  border: none;
+  color: var(--red);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.drag-ghost {
+  opacity: 0.5;
+}
+
+/* ===============================
+   Résultats & analytics
+   =============================== */
+.results-box {
+  max-width: 700px;
+  margin: 0 auto 2rem;
+  background: #fff;
+  border: 1px solid var(--grey-border);
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.result {
+  margin-bottom: 1rem;
+}
+
+.flex {
+  display: flex;
+  justify-content: space-between;
+  font-size: 15px;
+}
+
+.bar {
+  height: 6px;
+  background: var(--red);
+  border-radius: 4px;
+}
+
+.meta {
+  font-size: 14px;
+  color: #444;
+  margin-top: 0.5rem;
+}
+
+/* Canvas Chart.js */
+canvas {
+  display: block;
+  max-width: 700px;
+  margin: 1.5rem auto;
+}
+
+/* ===============================
+   Classement (classement.html)
+   =============================== */
+.user-entry {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--grey-border);
+  font-size: 15px;
+}
+
+.user-entry.header {
+  font-weight: bold;
+  background: #f0f0f0;
+  border-bottom: 2px solid #bbb;
+}
+
+/* Export CSV bouton spécifique */
+#exportCSV {
+  display: none;
+}
