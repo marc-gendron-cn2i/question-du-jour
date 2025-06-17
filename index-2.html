@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Créer une question du jour</title>
+  <!-- Font & CSS -->
+  <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="main-menu">
+    <a href="analytics.html">Analytics</a>
+    <a href="classement.html">Classement</a>
+  </nav>
+
+  <h1>Créer / Mettre à jour une question</h1>
+  <form id="pollForm">
+    <label for="site">Site</label>
+    <select id="site" required>
+      <option value="lesoleil">Le Soleil</option>
+      <option value="ledroit">Le Droit</option>
+      <option value="lenouvelliste">Le Nouvelliste</option>
+      <option value="lequotidien">Le Quotidien</option>
+      <option value="latribune">La Tribune</option>
+      <option value="lavoixdelest">La Voix de l'Est</option>
+    </select>
+
+    <div class="inline-inputs">
+      <div>
+        <label for="dateDebut">Date de début</label>
+        <input type="date" id="dateDebut" required>
+      </div>
+      <div>
+        <label for="heureDebut">Heure de début</label>
+        <input type="time" id="heureDebut" required>
+      </div>
+    </div>
+
+    <div class="inline-inputs">
+      <div>
+        <label for="dateFin">Date de fin</label>
+        <input type="date" id="dateFin" required>
+      </div>
+      <div>
+        <label for="heureFin">Heure de fin</label>
+        <input type="time" id="heureFin" required>
+      </div>
+    </div>
+
+    <label for="question">Question</label>
+    <textarea id="question" rows="2" required placeholder="Inscrivez votre question"></textarea>
+
+    <label>Choix de réponse (2 à 8 | Nous recommandons entre 3 et 5 choix)</label>
+    <div id="optionsContainer"></div>
+    <button type="button" id="addOption">Ajouter une option</button>
+
+    <button type="submit">Créer / Mettre à jour</button>
+    <div class="message" id="successMessage"></div>
+  </form>
+
+  <!-- Include SortableJS avant app.js pour avoir la variable globale Sortable -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
