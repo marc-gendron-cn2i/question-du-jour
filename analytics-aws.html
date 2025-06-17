@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Analyse des sondages</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    /* ... (votre CSS existant) ... */
+  </style>
+</head>
+<body>
+  <nav class="main-menu">
+    <a href="admin-question.html">Créer une question du jour</a>
+    <a href="classement.html">Classement</a>
+  </nav>
+
+  <h1>Analyse des sondages</h1>
+
+  <div class="inline-inputs">
+    <div>
+      <label for="site">Site</label>
+      <select id="site">…</select>
+    </div>
+    <div>
+      <label for="date">Date</label>
+      <input type="date" id="date" />
+    </div>
+  </div>
+
+  <button class="btn" id="loadData">Afficher les données</button>
+
+  <div class="results-box" id="resultsContainer">
+    <div style="color:#888;">Sélectionnez un site et une date.</div>
+  </div>
+
+  <canvas id="hourlyChart" height="120" style="margin-top:2rem;"></canvas>
+
+  <script type="module">
+  window.addEventListener('DOMContentLoaded', async () => {
+    console.log("DOM chargé → j'initialise le module analytics");
+
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js';
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      collection,
+      query,
+      where,
+      getDocs
+    } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js';
+
+    // --- Initialisation Firebase ---
+    const firebaseConfig = { /*…*/ };
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+
+    // --- Récupération des éléments ---
+    const siteEl    = document.getElementById("site");
+    const dateEl    = document.getElementById("date");
+    const loadBtn   = document.getElementById("loadData");
+    const resultsContainer = document.getElementById("resultsContainer");
+    const ctx       = document.getElementById("hourlyChart").getContext("2d");
+    let chart;
+
+    async function loadResults() {
+      console.log("[analytics] Bouton cliqué – chargement en cours");
+      const site = siteEl.value, date = dateEl.value;
+      if (!site || !date) return;
+      const pollId = `${site}_${date}`;
+      // … (reste de votre fonction loadResults inchangé) …
+    }
+
+    loadBtn.addEventListener("click", loadResults);
+    // Valeurs par défaut pour la date
+    const today = new Date(), toISO = d => d.toISOString().split('T')[0];
+    dateEl.value = toISO(today);
+    dateEl.max   = toISO(today);
+  });
+  </script>
+</body>
+</html>
