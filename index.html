@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Créer une question du jour</title>
-  <!-- Font & CSS -->
+  <title>Créer / Mettre à jour une question</title>
   <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -29,6 +28,7 @@
     <div class="inline-inputs">
       <div>
         <label for="dateDebut">Date de début</label>
+        <!-- reste toujours éditable -->
         <input type="date" id="dateDebut" required>
       </div>
       <div>
@@ -51,7 +51,7 @@
     <label for="question">Question</label>
     <textarea id="question" rows="2" required placeholder="Inscrivez votre question"></textarea>
 
-    <label>Choix de réponse (2 à 8 | Nous recommandons entre 3 et 5 choix)</label>
+    <label>Choix de réponse (2 à 8 | Nous recommandons 3-5 choix)</label>
     <div id="optionsContainer"></div>
     <button type="button" id="addOption">Ajouter une option</button>
 
