@@ -57,71 +57,94 @@
   </div>
   <button class="btn" id="loadMore" style="display:none">Afficher 25 de plus</button>
 
-  <script>
-    const API_BASE = 'https://hx9jzqon0l.execute-api.us-east-1.amazonaws.com/prod';
+ <script type="module">
+  const API_BASE = 'https://hx9jzqon0l.execute-api.us-east-1.amazonaws.com/prod';
 
-    document.getElementById('loadRanking').onclick = async function() {
-      const site  = document.getElementById('site').value;
-      const start = document.getElementById('start').value;
-      const end   = document.getElementById('end').value;
-      if (!site||!start||!end) return;
+  const siteEl      = document.getElementById("site");
+  const startEl     = document.getElementById("start");
+  const endEl       = document.getElementById("end");
+  const loadBtn     = document.getElementById("loadRanking");
+  const exportBtn   = document.getElementById("exportCSV");
+  const moreBtn     = document.getElementById("loadMore");
+  const container   = document.getElementById("rankingContainer");
+  let fullRanking=[], displayIndex=0;
 
-      // appelle votre endpoint /ranking?site=...&start=...&end=...
-      const res = await fetch(`${API_BASE}/ranking?site=${site}&start=${start}&end=${end}`, { credentials:'omit' });
-      const list = await res.json(); // [{ id:..., count:...},...]
-      window._full = list; window._idx = 0;
+  async function fetchRanking() {
+    const site  = siteEl.value;
+    const start = startEl.value;
+    const end   = endEl.value;
+    if(!site||!start||!end) return;
+
+    container.innerHTML = "<div style='color:#888;'>Chargement…</div>";
+    exportBtn.style.display="none";
+    moreBtn.style.display="none";
+    fullRanking=[]; displayIndex=0;
+
+    const res = await fetch(
+      `${API_BASE}/ranking?site=${site}&start=${start}&end=${end}`,
+      { credentials:'omit' }
+    );
+    fullRanking = await res.json(); // [{arcId, count},…]
+
+    if(fullRanking.length){
+      exportBtn.style.display = "inline-block";
       renderMore();
-      document.getElementById('exportCSV').style.display = list.length? 'inline-block':'none';
-    };
-
-    function renderMore() {
-      const container = document.getElementById('rankingContainer');
-      const moreBtn   = document.getElementById('loadMore');
-      const slice = window._full.slice(window._idx, window._idx+25);
-      if (window._idx===0) {
-        container.innerHTML = `
-          <div class="user-entry header"><span>ArcID</span><span>Votes</span></div>`;
-      }
-      slice.forEach(({id,count})=>{
-        const div=document.createElement('div');
-        div.className='user-entry';
-        div.innerHTML=`<span>${id}</span><span><b>${count}</b></span>`;
-        container.appendChild(div);
-      });
-      window._idx += slice.length;
-      moreBtn.style.display = (window._idx<window._full.length)?'block':'none';
+    } else {
+      container.innerHTML = "<div style='color:#888;'>Aucun résultat.</div>";
     }
+  }
 
-    document.getElementById('loadMore').onclick = renderMore;
-
-    document.getElementById('exportCSV').onclick = function() {
-      const arr = window._full;
-      if (!arr||!arr.length) return;
-      const esc=v=>`"${String(v).replace(/"/g,'""')}"`;
-      const lines = ['ArcID','Votes'].join(',') + '\r\n'
-        + arr.map(({id,count})=>[esc(id),esc(count)].join(',')).join('\r\n');
-      const blob = new Blob([`\uFEFF${lines}`], { type:'text/csv' });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = 'classement.csv';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    };
-
-    // dates par défaut
-    window.addEventListener('DOMContentLoaded',()=>{
-      const s=document.getElementById('start');
-      const e=document.getElementById('end');
-      const today=new Date(),yesterday=new Date(today);
-      yesterday.setDate(today.getDate()-1);
-      const past30=new Date(today); past30.setDate(today.getDate()-30);
-      const toISO=d=>d.toISOString().split('T')[0];
-      e.value=toISO(yesterday); e.max=toISO(yesterday);
-      s.value=toISO(past30);    s.max=toISO(yesterday);
+  function renderMore() {
+    if(displayIndex===0){
+      container.innerHTML = `
+        <div class="user-entry header">
+          <span>ArcID</span><span>Votes</span>
+        </div>`;
+    }
+    const slice = fullRanking.slice(displayIndex, displayIndex+25);
+    slice.forEach(({arcId,count})=>{
+      const div = document.createElement("div");
+      div.className = "user-entry";
+      div.innerHTML = `<span>${arcId}</span><span><b>${count}</b></span>`;
+      container.appendChild(div);
     });
-  </script>
+    displayIndex += slice.length;
+    moreBtn.style.display = displayIndex < fullRanking.length ? "block":"none";
+  }
+
+  function exportToCSV() {
+    if(!fullRanking.length) return;
+    const escapeVal = v=>`"${String(v).replace(/"/g,'""')}"`;
+    const lines = [
+      ['ArcID','Votes'].map(escapeVal).join(','),
+      ...fullRanking.map(o=>[escapeVal(o.arcId),escapeVal(o.count)].join(','))
+    ];
+    const blob = new Blob([`\uFEFF${lines.join('\r\n')}`],{type:'text/csv'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = "classement.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  loadBtn.addEventListener("click", fetchRanking);
+  moreBtn.addEventListener("click", renderMore);
+  exportBtn.addEventListener("click", exportToCSV);
+
+  // dates par défaut
+  window.addEventListener('DOMContentLoaded',()=>{
+    const today = new Date();
+    const toISO = d=>d.toISOString().split('T')[0];
+    const endDate   = new Date(today); endDate.setDate(endDate.getDate()-1);
+    const startDate = new Date(today); startDate.setDate(startDate.getDate()-30);
+    endEl.value   = toISO(endDate);
+    startEl.value = toISO(startDate);
+    endEl.max     = toISO(endDate);
+    startEl.max   = toISO(endDate);
+  });
+</script>
 </body>
 </html>
