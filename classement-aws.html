@@ -5,30 +5,99 @@
   <title>Classement des utilisateurs</title>
   <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    body{font-family:'Red Hat Display',sans-serif;max-width:700px;margin:2rem auto;padding:1rem;background:#f8f8f8}
-    h1{color:#d51D2C}
-    label{font-weight:700;margin-top:1rem;display:block}
-    .row{display:flex;gap:1rem}
-    select,input[type="date"]{padding:10px;font-size:16px;border-radius:6px;border:1px solid #ccc;width:100%;box-sizing:border-box}
-    .results-box{background:#fff;border:1px solid #ccc;border-radius:6px;padding:1rem;margin-top:1.5rem}
-    .user-entry{padding:.5rem 0;border-bottom:1px solid #eee;display:flex;justify-content:space-between;font-size:15px}
-    .user-entry.header{font-weight:bold;border-bottom:2px solid #bbb;background:#f0f0f0}
-    .btn{background:#d51D2C;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-size:16px;margin-top:1rem}
-    nav.main-menu{text-align:center;margin-bottom:2rem}
-    nav.main-menu a{margin:0 .5rem;padding:.5rem 1rem;color:#d51D2C;text-decoration:none;font-weight:600;border:2px solid transparent;border-radius:6px;transition:.2s}
-    nav.main-menu a:hover,nav.main-menu a:focus{background:#d51D2C;color:#fff;border-color:#d51D2C}
+    body {
+      font-family: 'Red Hat Display', sans-serif;
+      max-width: 700px;
+      margin: 2rem auto;
+      padding: 1rem;
+      background: #f8f8f8;
+    }
+    h1 {
+      color: #d51D2C;
+    }
+    .row {
+      display: flex;
+      gap: 1rem;
+    }
+    .row > div {
+      flex: 1;
+    }
+    label {
+      font-weight: 700;
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+    select, input[type="date"] {
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .btn {
+      background: #d51D2C;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 1rem;
+    }
+    .results-box {
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-top: 1.5rem;
+    }
+    .user-entry {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      font-size: 15px;
+    }
+    .user-entry.header {
+      font-weight: bold;
+      border-bottom: 2px solid #bbb;
+      background: #f0f0f0;
+    }
+    /* Menu de navigation */
+    nav.main-menu {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    nav.main-menu a {
+      display: inline-block;
+      margin: 0 0.5rem;
+      padding: 0.5rem 1rem;
+      color: #d51D2C;
+      text-decoration: none;
+      font-weight: 600;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+    nav.main-menu a:hover,
+    nav.main-menu a:focus {
+      background: #d51D2C;
+      color: #fff;
+      border-color: #d51D2C;
+    }
   </style>
 </head>
 <body>
   <nav class="main-menu">
-    <a href="admin-question.html">Créer une question</a>
+    <a href="admin-question.html">Créer une question du jour</a>
     <a href="analytics.html">Analytics</a>
   </nav>
 
   <h1>Classement des utilisateurs</h1>
 
   <div class="row">
-    <div style="flex:1">
+    <div>
       <label for="site">Site</label>
       <select id="site">
         <option value="lesoleil">Le Soleil</option>
@@ -39,112 +108,130 @@
         <option value="lavoixdelest">La Voix de l’Est</option>
       </select>
     </div>
-    <div style="flex:1">
+    <div>
       <label for="start">Du</label>
       <input type="date" id="start">
     </div>
-    <div style="flex:1">
+    <div>
       <label for="end">Au</label>
       <input type="date" id="end">
     </div>
   </div>
 
   <button class="btn" id="loadRanking">Afficher le classement</button>
-  <button class="btn" id="exportCSV" style="display:none">Exporter CSV</button>
+  <button class="btn" id="exportCSV" style="display:none;">Exporter en CSV</button>
 
   <div class="results-box" id="rankingContainer">
-    <div style="color:#888;">Sélectionnez site et dates puis cliquez sur « Afficher le classement ».</div>
+    <div style="color:#888;">
+      Sélectionnez un site et une plage de dates, puis cliquez sur « Afficher le classement ».
+    </div>
   </div>
-  <button class="btn" id="loadMore" style="display:none">Afficher 25 de plus</button>
 
- <script type="module">
-  const API_BASE = 'https://hx9jzqon0l.execute-api.us-east-1.amazonaws.com/prod';
+  <button class="btn" id="loadMore" style="display:none;">Afficher 25 de plus</button>
 
-  const siteEl      = document.getElementById("site");
-  const startEl     = document.getElementById("start");
-  const endEl       = document.getElementById("end");
-  const loadBtn     = document.getElementById("loadRanking");
-  const exportBtn   = document.getElementById("exportCSV");
-  const moreBtn     = document.getElementById("loadMore");
-  const container   = document.getElementById("rankingContainer");
-  let fullRanking=[], displayIndex=0;
+  <script>
+    // URL de base de votre API Gateway
+    const API_BASE = "https://hx9jzqon0l.execute-api.us-east-1.amazonaws.com/prod";
 
-  async function fetchRanking() {
-    const site  = siteEl.value;
-    const start = startEl.value;
-    const end   = endEl.value;
-    if(!site||!start||!end) return;
+    const siteEl         = document.getElementById("site");
+    const startEl        = document.getElementById("start");
+    const endEl          = document.getElementById("end");
+    const loadBtn        = document.getElementById("loadRanking");
+    const loadMoreBtn    = document.getElementById("loadMore");
+    const exportBtn      = document.getElementById("exportCSV");
+    const rankingContainer = document.getElementById("rankingContainer");
 
-    container.innerHTML = "<div style='color:#888;'>Chargement…</div>";
-    exportBtn.style.display="none";
-    moreBtn.style.display="none";
-    fullRanking=[]; displayIndex=0;
+    let fullRanking = [];
+    let displayIndex = 0;
 
-    const res = await fetch(
-      `${API_BASE}/ranking?site=${site}&start=${start}&end=${end}`,
-      { credentials:'omit' }
-    );
-    fullRanking = await res.json(); // [{arcId, count},…]
+    async function fetchRanking() {
+      const site  = siteEl.value;
+      const start = startEl.value;
+      const end   = endEl.value;
+      if (!site || !start || !end) return;
 
-    if(fullRanking.length){
-      exportBtn.style.display = "inline-block";
+      rankingContainer.innerHTML = "<div style='color:#888;'>Chargement…</div>";
+      loadMoreBtn.style.display = "none";
+      exportBtn.style.display   = "none";
+      fullRanking = [];
+      displayIndex = 0;
+
+      try {
+        const resp = await fetch(
+          `${API_BASE}/ranking?site=${site}&start=${start}&end=${end}`,
+          { method: "GET", headers: { "Content-Type": "application/json" } }
+        );
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        fullRanking = await resp.json();
+      } catch (err) {
+        console.error("Erreur fetchRanking:", err);
+        rankingContainer.innerHTML = `<div style="color:red;">Erreur au chargement des données.</div>`;
+        return;
+      }
+
+      if (!Array.isArray(fullRanking) || fullRanking.length === 0) {
+        rankingContainer.innerHTML = `<div style='color:#888;'>Aucun résultat pour ces critères.</div>`;
+        return;
+      }
+
       renderMore();
-    } else {
-      container.innerHTML = "<div style='color:#888;'>Aucun résultat.</div>";
+      exportBtn.style.display = "inline-block";
     }
-  }
 
-  function renderMore() {
-    if(displayIndex===0){
-      container.innerHTML = `
-        <div class="user-entry header">
-          <span>ArcID</span><span>Votes</span>
-        </div>`;
+    function renderMore() {
+      const slice = fullRanking.slice(displayIndex, displayIndex + 25);
+
+      if (displayIndex === 0) {
+        rankingContainer.innerHTML = `
+          <div class="user-entry header">
+            <span>Identifiant ArcID</span><span>Nombre de votes</span>
+          </div>
+        `;
+      }
+
+      slice.forEach(({ id, count }) => {
+        const div = document.createElement("div");
+        div.className = "user-entry";
+        div.innerHTML = `<span>${id}</span><span><b>${count}</b></span>`;
+        rankingContainer.appendChild(div);
+      });
+
+      displayIndex += slice.length;
+      loadMoreBtn.style.display = (displayIndex < fullRanking.length) ? "block" : "none";
     }
-    const slice = fullRanking.slice(displayIndex, displayIndex+25);
-    slice.forEach(({arcId,count})=>{
-      const div = document.createElement("div");
-      div.className = "user-entry";
-      div.innerHTML = `<span>${arcId}</span><span><b>${count}</b></span>`;
-      container.appendChild(div);
+
+    function exportToCSV() {
+      if (!fullRanking.length) return;
+      const header = ['ArcID','Nombre de votes'];
+      const lines = [
+        header.join(','),
+        ...fullRanking.map(({ id, count }) => `"${id}","${count}"`)
+      ];
+      const csv = "\uFEFF" + lines.join("\r\n");
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = link; a.download = "classement_utilisateurs.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    loadBtn.addEventListener("click", fetchRanking);
+    loadMoreBtn.addEventListener("click", renderMore);
+    exportBtn.addEventListener("click", exportToCSV);
+
+    // Initialisation des dates par défaut
+    window.addEventListener('DOMContentLoaded', () => {
+      const today = new Date();
+      const toISO = d => d.toISOString().slice(0,10);
+      const endDate = new Date(today); endDate.setDate(endDate.getDate()-1);
+      const startDate = new Date(today); startDate.setDate(startDate.getDate()-30);
+      startEl.value = toISO(startDate);
+      endEl.value   = toISO(endDate);
+      startEl.max   = toISO(endDate);
+      endEl.max     = toISO(endDate);
     });
-    displayIndex += slice.length;
-    moreBtn.style.display = displayIndex < fullRanking.length ? "block":"none";
-  }
-
-  function exportToCSV() {
-    if(!fullRanking.length) return;
-    const escapeVal = v=>`"${String(v).replace(/"/g,'""')}"`;
-    const lines = [
-      ['ArcID','Votes'].map(escapeVal).join(','),
-      ...fullRanking.map(o=>[escapeVal(o.arcId),escapeVal(o.count)].join(','))
-    ];
-    const blob = new Blob([`\uFEFF${lines.join('\r\n')}`],{type:'text/csv'});
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href     = url;
-    a.download = "classement.csv";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
-  loadBtn.addEventListener("click", fetchRanking);
-  moreBtn.addEventListener("click", renderMore);
-  exportBtn.addEventListener("click", exportToCSV);
-
-  // dates par défaut
-  window.addEventListener('DOMContentLoaded',()=>{
-    const today = new Date();
-    const toISO = d=>d.toISOString().split('T')[0];
-    const endDate   = new Date(today); endDate.setDate(endDate.getDate()-1);
-    const startDate = new Date(today); startDate.setDate(startDate.getDate()-30);
-    endEl.value   = toISO(endDate);
-    startEl.value = toISO(startDate);
-    endEl.max     = toISO(endDate);
-    startEl.max   = toISO(endDate);
-  });
-</script>
+  </script>
 </body>
 </html>
