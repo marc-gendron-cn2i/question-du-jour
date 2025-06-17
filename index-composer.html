@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin – Question du jour</title>
+  <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=20250618T0000">
+</head>
+<body>
+  <div class="dashboard">
+    <!-- 1) Barre latérale -->
+    <aside class="sidebar">
+      <div class="logo">  
+        <!-- Mettre ici votre logo ou nom d’application -->
+        <strong>Composer</strong>
+      </div>
+      <nav class="side-nav">
+        <ul>
+          <li><a href="#"><svg><!-- icône --></svg>Toutes les questions</a></li>
+          <li><a href="#"><svg></svg>Créer une question</a></li>
+          <li><a href="#"><svg></svg>Analytics</a></li>
+          <li><a href="#"><svg></svg>Classement</a></li>
+        </ul>
+      </nav>
+    </aside>
+
+    <!-- 2) Conteneur principal (header + contenu) -->
+    <div class="main">
+      <!-- 2a) Entête -->
+      <header class="header">
+        <div class="header-left">
+          <select id="site-select">
+            <option>Le Soleil</option>
+            <!-- … -->
+          </select>
+        </div>
+        <div class="header-right">
+          <span>FR</span>
+          <button class="btn-logout">Se déconnecter</button>
+        </div>
+      </header>
+
+      <!-- 2b) Contenu de page -->
+      <section class="content">
+        <h1>Créer / Mettre à jour une question</h1>
+        <!-- votre formulaire ici -->
+      </section>
+    </div>
+  </div>
+</body>
+</html>
