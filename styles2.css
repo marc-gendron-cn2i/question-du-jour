@@ -1,1 +1,102 @@
 
+body {
+  font-family: 'Red Hat Display', sans-serif;
+  background: #f8f8f8;
+  margin: 3rem auto;
+  max-width: 600px;
+  padding: 1rem;
+}
+h1 {
+  color: #d51D2C;
+  text-align: center;
+}
+label {
+  display: block;
+  margin-top: 1rem;
+  font-weight: 600;
+}
+.inline-inputs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.inline-inputs > div {
+  flex: 1;
+}
+input, textarea, select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-family: inherit;
+  box-sizing: border-box;
+/* Structure des options */
+.option-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.option-item .drag-handle {
+  cursor: grab;
+  margin-right: 0.5rem;
+  font-size: 1.2rem;
+}
+.option-item .option-input {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-family: 'Red Hat Display', sans-serif;
+  margin-right: 0.5rem;
+}
+.option-item .remove-option {
+  background: none;
+  border: none;
+  color: #d51D2C;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+.drag-ghost {
+  opacity: 0.5;
+}
+
+button {
+  margin-top: 1.5rem;
+  background: #d51D2C;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  font-size: 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+button:hover {
+  background: #c21a26;
+}
+.message {
+  margin-top: 1rem;
+  font-weight: 600;
+  color: #d51D2C;
+}
+nav.main-menu {
+  text-align: center;
+  margin-bottom: 2rem;
+  font-family: 'Red Hat Display', sans-serif;
+}
+nav.main-menu a {
+  display: inline-block;
+  margin: 0 0.5rem;
+  padding: 0.5rem 1rem;
+  color: #d51D2C;
+  text-decoration: none;
+  font-weight: 600;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+nav.main-menu a:hover,
+nav.main-menu a:focus {
+  background: #d51D2C;
+  color: #fff;
+  border-color: #d51D2C;
+}
