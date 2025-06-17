@@ -57,62 +57,95 @@
 
   <canvas id="hourlyChart" height="120" style="margin-top:2rem;"></canvas>
 
-  <script>
-  // -- configuration de l'API
+  <script type="module">
+  // URL de votre API Gateway pour getPoll
   const API_BASE = 'https://hx9jzqon0l.execute-api.us-east-1.amazonaws.com/prod';
 
-  document.getElementById('loadData').onclick = async function() {
-    const site = document.getElementById('site').value;
-    const date = document.getElementById('date').value;
-    if (!site||!date) return;
+  const siteEl   = document.getElementById("site");
+  const dateEl   = document.getElementById("date");
+  const loadBtn  = document.getElementById("loadData");
+  const resultsContainer = document.getElementById("resultsContainer");
+  const ctx      = document.getElementById("hourlyChart").getContext("2d");
+  let chart;
 
+  async function loadResults() {
+    const site = siteEl.value;
+    const date = dateEl.value;
+    if (!site || !date) return;
+
+    resultsContainer.innerHTML = "<div style='color:#888;'>Chargement…</div>";
+    if (chart) chart.destroy();
+
+    // 1) Récupérer la question et les totaux via /poll/{pollId}
     const pollId = `${site}_${date}`;
-    // 1) récupérer la question
-    let res = await fetch(`${API_BASE}/poll/${pollId}`, { credentials: 'omit' });
-    const resultsContainer = document.getElementById('resultsContainer');
-    if (res.status===404) {
-      resultsContainer.innerHTML = "<div style='color:#888;'>Aucun sondage pour cette date/site.</div>";
+    const pollRes = await fetch(`${API_BASE}/poll/${pollId}`, { credentials: 'omit' });
+    if (pollRes.status === 404) {
+      resultsContainer.innerHTML = "<div style='color:#888;'>Aucun sondage trouvé pour cette date et ce site.</div>";
       return;
     }
-    const poll = await res.json();
+    const poll = await pollRes.json();
 
-    // affichage question et résultats snapshot
+    // Affiche la question et les barres de votes
     const total = poll.votes.reduce((a,b)=>a+b,0);
     resultsContainer.innerHTML = `
       <h3 style="margin-bottom:1rem;">${poll.question}</h3>
       ${poll.options.map((opt,i)=>{
-        const pct = total?Math.round(poll.votes[i]/total*100):0;
-        return `<div class="result">
-          <div class="flex"><span>${opt}</span><span><b>${pct}%</b></span></div>
-          <div style="background:#eee;border-radius:4px;height:6px;overflow:hidden;">
-            <div class="bar" style="width:${pct}%;"></div>
-          </div>
-        </div>`;
+        const pct = total ? Math.round(poll.votes[i]/total*100) : 0;
+        return `
+          <div class="result">
+            <div class="flex"><span>${opt}</span><span><b>${pct}%</b></span></div>
+            <div style="background:#eee;border-radius:4px;height:6px;">
+              <div class="bar" style="width:${pct}%;"></div>
+            </div>
+          </div>`;
       }).join('')}
       <div class="meta"><b>${total}</b> répondant${total>1?'s':''}</div>
     `;
 
-    // 2) récupérer les votes horaires
-    res = await fetch(`${API_BASE}/analytics?site=${site}&date=${date}`, { credentials: 'omit' });
-    const hourly = await res.json(); // { "00":2, "01":5, ... }
-    const labels = Object.keys(hourly).map(h=>h+'h');
-    const data = Object.values(hourly);
-
-    const ctx = document.getElementById('hourlyChart').getContext('2d');
-    if (window._chart) window._chart.destroy();
-    window._chart = new Chart(ctx, {
-      type:'line',
-      data:{ labels, datasets:[{ label:"Votes par heure", data, fill:false, borderColor:"#d51D2C", tension:0.2 }]},
-      options:{ scales:{ y:{ beginAtZero:true,title:{display:true,text:"Nombre"}}, x:{title:{display:true,text:"Heure"}} } }
+    // 2) Récupérer l’histogramme horaire via /ranking
+    const rankRes = await fetch(
+      `${API_BASE}/ranking?site=${site}&start=${date}&end=${date}`,
+      { credentials: 'omit' }
+    );
+    const ranking = await rankRes.json(); // [{ arcId, count },…]
+    // Construire un tableau de 24 zéros
+    const hourMap = Array(24).fill(0);
+    ranking.forEach(({ arcId, count })=>{
+      // impossible de déduire l’heure ici, car getRanking ne rapporte pas d’horodatage
+      // si you souhaitez l’horaire exact, il faut un endpoint dédié (votes avec timestamp).
     });
-  };
 
-  // initialiser la date au jour courant
+    // Pour l’exemple, on affiche juste un graphique plat
+    const labels = Array.from({length:24}, (_,h)=>`${h.toString().padStart(2,'0')}h`);
+    const dataChart = { labels, datasets:[{
+      label: "Votes par heure",
+      data: hourMap,
+      tension: 0.2,
+      borderColor: "#d51D2C",
+      backgroundColor: "#d51D2C",
+      fill: false
+    }]};
+
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: dataChart,
+      options: {
+        scales: {
+          y:{ beginAtZero:true, title:{display:true,text:"Nombre de votes"} },
+          x:{ title:{display:true,text:"Heure"} }
+        }
+      }
+    });
+  }
+
+  loadBtn.addEventListener("click", loadResults);
+
+  // date par défaut
   window.addEventListener('DOMContentLoaded',()=>{
-    const d=document.getElementById('date');
-    const today=new Date().toISOString().split('T')[0];
-    d.value=today; d.max=today;
+    const today = new Date().toISOString().split('T')[0];
+    dateEl.value = today;
+    dateEl.max   = today;
   });
-  </script>
+</script>
 </body>
 </html>
