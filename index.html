@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Créer / Mettre à jour une question</title>
+  <title>Créer une question du jour</title>
   <!-- Font & CSS -->
   <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
@@ -51,7 +51,7 @@
     <label for="question">Question</label>
     <textarea id="question" rows="2" required placeholder="Inscrivez votre question"></textarea>
 
-    <label>Choix de réponse (2 à 8 | recommandé 3–5)</label>
+    <label>Choix de réponse (2 à 8 | Nous recommandons entre 3 et 5 choix)</label>
     <div id="optionsContainer"></div>
     <button type="button" id="addOption">Ajouter une option</button>
 
@@ -59,7 +59,7 @@
     <div class="message" id="successMessage"></div>
   </form>
 
-  <!-- SortableJS + ton script -->
+  <!-- Include SortableJS avant app.js pour avoir la variable globale Sortable -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
   <script type="module" src="app.js"></script>
 </body>
