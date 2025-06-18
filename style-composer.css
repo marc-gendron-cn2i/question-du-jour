@@ -1,242 +1,246 @@
-/* ================================
-   RESET BASIQUE
-   ================================ */
+/* ──────────────────────────────── GLOBAL ───────────────────────────────── */
+
 *,
 *::before,
 *::after {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-html, body {
-  height: 100%;
-  font-family: 'Red Hat Display', sans-serif;
-  background: #f5f7fa;
-  color: #333;
-  line-height: 1.4;
 }
 
-/* ================================
-   STRUCTURE LAYOUT
-   ================================ */
+html {
+  font-family: 'Red Hat Display', sans-serif;
+  font-size: 16px;
+  line-height: 1.4;
+  color: #111;
+}
+
+body {
+  margin: 0;
+  background: #f8f8f8;
+}
+
+/* ───────────────────────── DASHBOARD LAYOUT ────────────────────────── */
+
 .dashboard {
   display: flex;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
 }
 
-/* ---------- BARRE LATÉRALE ---------- */
+/* ─────────────────────────── SIDEBAR ──────────────────────────────── */
+
 .sidebar {
-  width: 250px;
-  background: #ffffff;
-  border-right: 1px solid #e0e0e0;
+  width: 220px;
+  background: #fff;
+  border-right: 1px solid #e1e1e1;
   display: flex;
   flex-direction: column;
 }
+
 .sidebar .logo {
   padding: 1.5rem;
-  font-size: 1.25rem;
   font-weight: 700;
-  border-bottom: 1px solid #e0e0e0;
+  font-size: 1.25rem;
+  border-bottom: 1px solid #e1e1e1;
 }
+
 .side-nav {
   flex: 1;
-  overflow-y: auto;
+  padding-top: 1rem;
 }
+
 .side-nav ul {
   list-style: none;
+  margin: 0;
+  padding: 0;
 }
+
 .side-nav li + li {
   margin-top: 0.25rem;
 }
+
 .side-nav a {
-  display: flex;
-  align-items: center;
-  padding: 0.75rem 1.5rem;
-  color: #333;
+  display: block;
+  padding: 0.6rem 1rem;
+  color: #d51d2c;
   text-decoration: none;
-  font-weight: 500;
-  transition: background 0.2s;
-}
-.side-nav a svg {
-  margin-right: 0.75rem;
-  fill: #666;
-}
-.side-nav a:hover,
-.side-nav a:focus {
-  background: #eaeaea;
+  font-weight: 600;
+  border-left: 4px solid transparent;
+  transition: background 0.2s, border-color 0.2s;
 }
 
-/* ---------- ZONE PRINCIPALE (HEADER + CONTENU) ---------- */
+.side-nav a:hover,
+.side-nav a:focus {
+  background: #fee;
+  border-color: #d51d2c;
+  color: #a00;
+}
+
+/* ──────────────────────────── MAIN & HEADER ───────────────────────── */
+
 .main {
   flex: 1;
   display: flex;
   flex-direction: column;
 }
 
-/* ------ ENTÊTE ------ */
 .header {
-  height: 60px;
-  background: #2e3a4e;
-  color: #fff;
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  padding: 0 1.5rem;
-  flex-shrink: 0;
+  align-items: center;
+  padding: 0 2rem;
+  height: 60px;
+  background: #fff;
+  border-bottom: 1px solid #e1e1e1;
 }
-.header-left select {
-  background: transparent;
-  border: none;
-  color: #fff;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-}
+
 .header-right {
   display: flex;
   align-items: center;
-}
-.header-right span {
-  margin-right: 1rem;
-  font-weight: 500;
-}
-.btn-logout {
-  background: none;
-  border: 1px solid rgba(255,255,255,0.6);
-  color: #fff;
-  padding: 0.35rem 0.75rem;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
-}
-.btn-logout:hover,
-.btn-logout:focus {
-  background: rgba(255,255,255,0.2);
-  border-color: #fff;
+  gap: 1rem;
 }
 
-/* ------ CONTENU PRINCIPAL ------ */
+.lang-switch {
+  font-weight: 600;
+  color: #555;
+}
+
+.btn-logout {
+  background: none;
+  border: 1px solid #ccc;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.btn-logout:hover,
+.btn-logout:focus {
+  background: #f0f0f0;
+  border-color: #bbb;
+}
+
+/* ─────────────────────────── CONTENT AREA ────────────────────────── */
+
 .content {
   flex: 1;
   overflow-y: auto;
   padding: 2rem;
-  background: #f8f8f8;
 }
 
-/* ================================
-   STYLES GÉNÉRAUX DES PAGES
-   ================================ */
-.content h1 {
-  color: #d51D2C;
+/* ─────────────────────────── FORM STYLES ─────────────────────────── */
+
+h1 {
+  margin-top: 0;
+  color: #d51d2c;
   font-size: 2rem;
-  margin-bottom: 1.5rem;
+  font-weight: 700;
 }
 
-/* ---------- FORMULAIRES & CONTRÔLES ---------- */
-.content label {
-  display: block;
-  font-weight: 700;
-  margin-bottom: 0.25rem;
+form {
+  max-width: 700px;
+  background: #fff;
+  padding: 2rem;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
-.content input[type="text"],
-.content input[type="date"],
-.content input[type="time"],
-.content select,
-.content textarea {
+
+label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+input[type="text"],
+input[type="date"],
+input[type="time"],
+select,
+textarea {
   width: 100%;
-  padding: 0.6rem 0.75rem;
+  padding: 0.6rem 0.8rem;
   font-size: 1rem;
   border: 1px solid #ccc;
   border-radius: 6px;
-  background: #fff;
-  margin-bottom: 1rem;
-  font-family: 'Red Hat Display', sans-serif;
+  margin-bottom: 1.5rem;
+  font-family: inherit;
 }
-.content textarea {
-  resize: vertical;
-}
+
 .inline-inputs {
   display: flex;
   gap: 1rem;
-  margin-bottom: 1.5rem;
 }
+
 .inline-inputs > div {
   flex: 1;
 }
 
-/* ---------- BOUTONS ---------- */
-.btn,
-button {
-  display: inline-block;
-  background: #d51D2C;
+textarea {
+  resize: vertical;
+}
+
+#optionsContainer .option-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.option-item input {
+  flex: 1;
+}
+
+.option-item .btn-remove {
+  background: none;
+  border: none;
+  color: #d51d2c;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.btn-action {
+  background: #d51d2c;
   color: #fff;
   border: none;
-  padding: 0.75rem 1.25rem;
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 1.5rem;
+}
+
+.form-actions {
+  text-align: right;
+}
+
+.btn-primary {
+  background: #d51d2c;
+  color: #fff;
+  border: none;
+  padding: 0.8rem 1.5rem;
   border-radius: 6px;
   cursor: pointer;
   font-size: 1rem;
   font-weight: 600;
-  transition: background 0.2s;
-  text-decoration: none;
-}
-.btn:hover,
-button:hover,
-.btn:focus,
-button:focus {
-  background: #b82228;
 }
 
-/* ============= SPÉCIFIQUES POLLS ============= */
-/* Container résultats interne (si besoin) */
-.results-box {
-  background: #fff;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  padding: 1rem;
-  margin-top: 1.5rem;
-}
-
-/* Styles pour le widget de sondage (options + drag handle) */
-#optionsContainer .option-item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  margin-bottom: 0.75rem;
-}
-.option-item .drag-handle {
-  cursor: grab;
-  margin-right: 0.75rem;
-  font-size: 1.25rem;
-  color: #999;
-}
-.option-item input {
-  flex: 1;
-}
-.option-item .remove-btn {
-  position: absolute;
-  right: -1.5rem;
-  background: transparent;
-  border: none;
-  font-size: 1.5rem;
-  color: #d51D2C;
-  cursor: pointer;
-}
-
-/* MESSAGE DE SUCCÈS / ERREUR */
 .message {
   margin-top: 1rem;
-  font-weight: 600;
-  color: #28a745; /* vert par défaut */
-}
-.message.error {
-  color: #dc3545;
+  font-size: 0.95rem;
+  color: #080;
 }
 
-/* ================================
-   UTILITAIRES & SPACING
-   ================================ */
-.mt-1 { margin-top: 1rem; }
-.mb-1 { margin-bottom: 1rem; }
-.text-center { text-align: center; }
-.hidden { display: none !important; }
+/* ─────────────────────────── RESPONSIVE ──────────────────────────── */
+
+@media (max-width: 768px) {
+  .dashboard {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #e1e1e1;
+  }
+  .main {
+    flex: none;
+  }
+}
