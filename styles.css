@@ -1,94 +1,21 @@
-/* ===============================
-   Variables de base
-   =============================== */
-:root {
-  --red: #d51D2C;
-  --grey-bg: #f8f8f8;
-  --grey-border: #ccc;
-  --font: 'Red Hat Display', sans-serif;
-}
-
-/* ===============================
-   Reset & typographie
-   =============================== */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* Global */
 body {
-  font-family: var(--font);
-  background: var(--grey-bg);
-  color: #000;
-  line-height: 1.5;
+  font-family: 'Red Hat Display', sans-serif;
+  background: #f8f8f8;
+  margin: 3rem auto;
+  max-width: 600px;
+  padding: 1rem;
 }
 h1 {
-  color: var(--red);
-  font-size: 2rem;
-  margin-bottom: 1rem;
-}
-
-/* ===============================
-   Navigation principale
-   =============================== */
-nav.main-menu {
+  color: #d51D2C;
   text-align: center;
-  margin-top: 1.5rem;
   margin-bottom: 2rem;
 }
-nav.main-menu a {
-  display: inline-block;
-  margin: 0 0.75rem;
-  padding: 0.5rem 1rem;
-  font-weight: 600;
-  text-decoration: none;
-  color: var(--red);
-  border: 2px solid transparent;
-  border-radius: 6px;
-  transition: background 0.2s, color 0.2s, border-color 0.2s;
-}
-nav.main-menu a:hover,
-nav.main-menu a:focus {
-  background: var(--red);
-  color: #fff;
-  border-color: var(--red);
-}
-/* Classe pour le lien actif (celui de la page courante) */
-nav.main-menu a.active {
-  background: var(--red);
-  color: #fff;
-  border-color: var(--red);
-}
-
-/* ===============================
-   Formulaires et contenu
-   =============================== */
-.container {
-  max-width: 700px;
-  margin: 0 auto 2rem;
-  padding: 0 1rem;
-}
-
-/* Champs & labels */
 label {
   display: block;
-  font-weight: 700;
-  margin-bottom: 0.25rem;
+  margin-top: 1rem;
+  font-weight: 600;
 }
-input[type="text"],
-input[type="date"],
-input[type="time"],
-textarea,
-select {
-  width: 100%;
-  padding: 0.75rem;
-  font-size: 1rem;
-  border: 1px solid var(--grey-border);
-  border-radius: 6px;
-  margin-bottom: 1rem;
-}
-
-/* Groupes côte-à-côte */
 .inline-inputs {
   display: flex;
   gap: 1rem;
@@ -97,134 +24,78 @@ select {
 .inline-inputs > div {
   flex: 1;
 }
+input, textarea, select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
 
-/* Boutons génériques */
-button,
-button.btn {
-  font-family: var(--font);
-  background: var(--red);
+/* Options */
+#optionsContainer .option-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.drag-handle {
+  cursor: grab;
+  font-size: 1.2rem;
+  color: #888;
+}
+.option-row input {
+  flex: 1;
+}
+.remove-option {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  color: #d51D2C;
+  cursor: pointer;
+}
+
+/* Boutons */
+button {
+  margin-top: 1.5rem;
+  background: #d51D2C;
   color: #fff;
   border: none;
-  padding: 0.75rem 1.5rem;
+  padding: 10px 20px;
   font-size: 1rem;
   border-radius: 6px;
   cursor: pointer;
-  margin-right: 1rem;
-  margin-bottom: 1rem;
-  transition: opacity 0.2s;
 }
-button:hover,
-button.btn:hover {
-  opacity: 0.9;
-}
-
-/* Bouton secondaire (ajout d’option) */
-button#addOption {
-  background: none;
-  color: var(--red);
-  border: 2px solid var(--red);
-  border-radius: 6px;
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-button#addOption:hover {
-  background: var(--red);
-  color: #fff;
+button:hover {
+  background: #c21a26;
 }
 
 /* Messages */
 .message {
-  margin-top: 0.5rem;
+  margin-top: 1rem;
   font-weight: 600;
-  color: var(--red);
 }
 
-/* ===============================
-   Drag & Drop des options
-   =============================== */
-#optionsContainer {
-  margin-bottom: 1rem;
+/* Navigation */
+nav.main-menu {
+  text-align: center;
+  margin-bottom: 2rem;
 }
-.option-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-.option-item .drag-handle {
-  cursor: grab;
-  margin-right: 0.75rem;
-  font-size: 1.25rem;
-  color: var(--grey-border);
-}
-.option-item .option-input {
-  flex: 1;
-  padding: 0.75rem;
-  border: 1px solid var(--grey-border);
+nav.main-menu a {
+  display: inline-block;
+  margin: 0 0.5rem;
+  padding: 0.5rem 1rem;
+  color: #d51D2C;
+  text-decoration: none;
+  font-weight: 600;
+  border: 2px solid transparent;
   border-radius: 6px;
-  margin-right: 0.5rem;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
-.option-item .remove-option {
-  background: none;
-  border: none;
-  font-size: 1.25rem;
-  color: var(--red);
-  cursor: pointer;
-}
-.drag-ghost {
-  opacity: 0.5;
-}
-
-/* ===============================
-   Résultats & analytics
-   =============================== */
-.results-box {
-  background: #fff;
-  border: 1px solid var(--grey-border);
-  border-radius: 6px;
-  padding: 1rem;
-  margin-top: 1.5rem;
-}
-.result {
-  margin-bottom: 1rem;
-}
-.flex {
-  display: flex;
-  justify-content: space-between;
-}
-.bar {
-  height: 6px;
-  background: var(--red);
-  border-radius: 4px;
-}
-.meta {
-  font-size: 0.9rem;
-  color: #444;
-  margin-top: 0.5rem;
-}
-canvas {
-  display: block;
-  max-width: 700px;
-  margin: 1.5rem auto;
-}
-
-/* ===============================
-   Classement
-   =============================== */
-.user-entry {
-  display: flex;
-  justify-content: space-between;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--grey-border);
-  font-size: 0.9rem;
-}
-.user-entry.header {
-  font-weight: bold;
-  border-bottom: 2px solid #bbb;
-  background: #f0f0f0;
-}
-
-/* Export CSV */
-#exportCSV {
-  display: none;
+nav.main-menu a:hover,
+nav.main-menu a:focus {
+  background: #d51D2C;
+  color: #fff;
+  border-color: #d51D2C;
 }
